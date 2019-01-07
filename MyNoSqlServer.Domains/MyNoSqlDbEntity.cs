@@ -21,11 +21,6 @@ namespace MyNoSqlServer.Domains
         [JsonProperty("timestamp")]                        
         public string Timestamp { get; set; }
 
-
-        public void InitTimeStamp()
-        {
-            Timestamp = DateTime.UtcNow.ToString("O");
-        }
     }
 
 }

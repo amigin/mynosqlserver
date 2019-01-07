@@ -65,8 +65,6 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (string.IsNullOrEmpty(body.RowKey))
                 return this.RowKeyIsNull();
-            
-            body.InitTimeStamp();
 
             var data = Request.BodyAsByteArray();
             var result = table.Insert(body, data);
@@ -91,8 +89,6 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (string.IsNullOrEmpty(body.RowKey))
                 return this.RowKeyIsNull();
-            
-            body.InitTimeStamp();
             
             var data = Request.BodyAsByteArray();
             table.InsertOrReplace(body, data);

@@ -1,8 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using Newtonsoft.Json;
 
 namespace MyNoSqlServer.Domains.Db
 {
+    
+    
+
     
     
     public static class DbRowUtils
@@ -27,29 +33,69 @@ namespace MyNoSqlServer.Domains.Db
             yield return (byte) ']';
 
         }
+
+
+        const string fieldToYield = "\"timestamp\"";
+        private static bool IsTimeStampField(this byte[] byteArray, KeyValuePair<int, int> position)
+        {
+           
+
+            if (position.Value - position.Key != fieldToYield.Length)
+                return false;
+
+            var j = 0;
+            for (var i = position.Key; i < position.Value; i++)
+            {
+                if (byteArray[i] != fieldToYield[j])
+                    return false;
+                j++;
+            }
+
+            return true;
+
+        }
         
         public static IEnumerable<byte> InjectTimestamp(this byte[] byteArray, string timeStamp)
         {
-            var waitingForOpenedTag = true;
+            
+            var valueToInject =$"\"{timeStamp}\"" ;
 
-            foreach (var b in byteArray)
+
+            yield return JsonByteArrayReader.OpenBracket;
+
+
+
+            
+            foreach (var (key, value) in byteArray.ParseFirstLevelOfJson())
             {
-                yield return b;
                 
-                if (waitingForOpenedTag)
-                {
-                    if (b == (byte)'{')
-                    {
-                        var fieldToYield = $"\"Timestamp\":\"{timeStamp}\",";
-
-                        foreach (var c in fieldToYield)
-                            yield return (byte) c;
-                        
-                        waitingForOpenedTag = false;
-                    }
-                }
+                if (byteArray.IsTimeStampField(key))
+                    continue;
+                
+                for (var i=key.Key; i<key.Value; i++)  
+                    yield return byteArray[i];
+                
+                yield return JsonByteArrayReader.DoubleColumn;
+                
+                for (var i=value.Key; i<value.Value; i++)  
+                    yield return byteArray[i];
+                
+                yield return JsonByteArrayReader.Comma;
                 
             }
+            
+            foreach (var c in fieldToYield)
+                yield return (byte) c;
+                
+            yield return JsonByteArrayReader.DoubleColumn;
+            
+            foreach (var c in valueToInject)
+                yield return (byte) c;
+
+
+            yield return JsonByteArrayReader.CloseBraked;
+           
+            
         }
 
         public static IEnumerable<ReadOnlyMemory<byte>> SplitByDbRows(this byte[] byteArray)
