@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyNoSqlServer.Domains", "MyNoSqlServer.Domains\MyNoSqlServer.Domains.csproj", "{F14DEACC-6275-4135-824E-0C9CA119969D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyNoSqlServer.Api", "MyNoSqlServer.Api\MyNoSqlServer.Api.csproj", "{7E7ABAC4-33F2-4921-ABB9-525792F404DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyNoSqlServer.AzureStorage", "MyNoSqlServer.AzureStorage\MyNoSqlServer.AzureStorage.csproj", "{745AEF5F-9BCF-4592-9E64-3F75C96D3999}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F14DEACC-6275-4135-824E-0C9CA119969D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F14DEACC-6275-4135-824E-0C9CA119969D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F14DEACC-6275-4135-824E-0C9CA119969D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F14DEACC-6275-4135-824E-0C9CA119969D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E7ABAC4-33F2-4921-ABB9-525792F404DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E7ABAC4-33F2-4921-ABB9-525792F404DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E7ABAC4-33F2-4921-ABB9-525792F404DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E7ABAC4-33F2-4921-ABB9-525792F404DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

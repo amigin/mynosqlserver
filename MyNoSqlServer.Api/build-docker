@@ -1,0 +1,5 @@
+#bash
+rm -rf app
+dotnet publish -o app -c release
+docker build -t amigin/mynosqlserver .
+docker push amigin/mynosqlserver
