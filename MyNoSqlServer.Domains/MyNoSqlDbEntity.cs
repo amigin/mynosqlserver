@@ -1,3 +1,4 @@
+using System;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -19,6 +20,12 @@ namespace MyNoSqlServer.Domains
         public string RowKey { get; set; }
         [JsonProperty("timestamp")]                        
         public string Timestamp { get; set; }
+
+
+        public void InitTimeStamp()
+        {
+            Timestamp = DateTime.UtcNow.ToString("O");
+        }
     }
 
 }

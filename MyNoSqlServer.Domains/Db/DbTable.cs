@@ -61,6 +61,9 @@ namespace MyNoSqlServer.Domains.Db
         
         public void InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
+
+
+            
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
