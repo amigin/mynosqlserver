@@ -174,7 +174,7 @@ namespace MyNoSqlServer.Domains.Db
                     case ExpectedToken.CloseNumberOrBoolValue:
                         if (c == Comma || c.IsSpace())
                         {
-                            yield return (field, new KeyValuePair<int, int>(start, i+1));
+                            yield return (field, new KeyValuePair<int, int>(start, i));
                             expectedToken = c == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
                         }
                         break;
