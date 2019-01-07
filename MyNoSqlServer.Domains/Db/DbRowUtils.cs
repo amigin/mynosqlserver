@@ -35,7 +35,7 @@ namespace MyNoSqlServer.Domains.Db
         }
 
 
-        const string fieldToYield = "\"timestamp\"";
+        const string fieldToYield = "\"Timestamp\"";
         private static bool IsTimeStampField(this byte[] byteArray, KeyValuePair<int, int> position)
         {
            
