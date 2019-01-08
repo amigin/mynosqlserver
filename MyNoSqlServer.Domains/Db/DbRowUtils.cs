@@ -93,7 +93,7 @@ namespace MyNoSqlServer.Domains.Db
                 yield return (byte) c;
 
 
-            yield return JsonByteArrayReader.CloseBraked;
+            yield return JsonByteArrayReader.CloseBraket;
            
             
         }

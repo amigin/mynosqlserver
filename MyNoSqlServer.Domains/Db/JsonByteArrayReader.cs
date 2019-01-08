@@ -15,7 +15,7 @@ namespace MyNoSqlServer.Domains.Db
     {
         
         public const byte OpenBracket = (byte) '{';
-        public const byte CloseBraked = (byte) '}';
+        public const byte CloseBraket = (byte) '}';
         public const byte DoubleQuote = (byte) '"';
         public const byte DoubleColumn = (byte) ':';
         public const byte OpenArray = (byte) '[';
@@ -97,7 +97,7 @@ namespace MyNoSqlServer.Domains.Db
                         break;
                     
                     case ExpectedToken.OpenKey:
-                        if (c == CloseBraked)
+                        if (c == CloseBraket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             break;
@@ -183,9 +183,12 @@ namespace MyNoSqlServer.Domains.Db
                         break;
                     
                     case ExpectedToken.CloseNumberOrBoolValue:
-                        if (c == Comma || c.IsSpace())
+                        if (c == Comma || c == CloseBraket || c.IsSpace())
                         {
                             yield return (field, new KeyValuePair<int, int>(start, i));
+                            if (c == CloseBraket)
+                                expectedToken = ExpectedToken.EndOfFile;
+                            else
                             expectedToken = c == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
                         }
                         break;
@@ -193,7 +196,7 @@ namespace MyNoSqlServer.Domains.Db
                     case ExpectedToken.Comma:
                         if (c.IsSpace())
                         continue;
-                        if (c == CloseBraked)
+                        if (c == CloseBraket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             continue;
@@ -228,11 +231,11 @@ namespace MyNoSqlServer.Domains.Db
                                 case OpenBracket:
                                     subObjectLevel++;
                                     continue;
-                                case CloseBraked when subObjectLevel == 0:
+                                case CloseBraket when subObjectLevel == 0:
                                     yield return (field, new KeyValuePair<int, int>(start, i+1));
                                     expectedToken = ExpectedToken.Comma;
                                     break;
-                                case CloseBraked:
+                                case CloseBraket:
                                     subObjectLevel--;
                                     break;
                             }
