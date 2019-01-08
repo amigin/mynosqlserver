@@ -46,7 +46,7 @@ namespace MyNoSqlServer.Domains.Db
 
         private static bool IsStartOfBool(this byte c)
         {
-            return c == (byte) 't' || c == (byte) 'f' || c == (byte) 'T' || c == (byte) 'F';
+            return c == (byte) 't' || c == (byte) 'f' || c == (byte) 'T' || c == (byte) 'F' || c == (byte)'n' || c == (byte)'N';
         }
 
 
