@@ -35,20 +35,20 @@ namespace MyNoSqlServer.Domains.Db
         }
 
 
-        const string fieldToYield = "\"Timestamp\"";
-        private static bool IsTimeStampField(this byte[] byteArray, KeyValuePair<int, int> position)
+        private const string FieldToYield = "\"Timestamp\"";
+        private static bool IsTimeStampField(this ArraySpan span)
         {
-           
 
-            if (position.Value - position.Key != fieldToYield.Length)
+            if (span.Length != FieldToYield.Length)
                 return false;
 
-            var j = 0;
-            for (var i = position.Key; i < position.Value; i++)
+            var i = 0;
+
+            foreach (var b in span)
             {
-                if (byteArray[i] != fieldToYield[j])
+                if (b != FieldToYield[i])
                     return false;
-                j++;
+                i++;
             }
 
             return true;
@@ -60,31 +60,27 @@ namespace MyNoSqlServer.Domains.Db
             
             var valueToInject =$"\"{timeStamp}\"" ;
 
-
             yield return JsonByteArrayReader.OpenBracket;
-
-
-
             
-            foreach (var (key, value) in byteArray.ParseFirstLevelOfJson())
+            foreach (var (keySpan, valueSpan) in byteArray.ParseFirstLevelOfJson())
             {
                 
-                if (byteArray.IsTimeStampField(key))
+                if (keySpan.IsTimeStampField())
                     continue;
-                
-                for (var i=key.Key; i<key.Value; i++)  
-                    yield return byteArray[i];
+
+                foreach (var b in keySpan)
+                    yield return b;
                 
                 yield return JsonByteArrayReader.DoubleColumn;
                 
-                for (var i=value.Key; i<value.Value; i++)  
-                    yield return byteArray[i];
+                foreach (var b in valueSpan)
+                    yield return b;                
                 
                 yield return JsonByteArrayReader.Comma;
                 
             }
             
-            foreach (var c in fieldToYield)
+            foreach (var c in FieldToYield)
                 yield return (byte) c;
                 
             yield return JsonByteArrayReader.DoubleColumn;
@@ -92,13 +88,11 @@ namespace MyNoSqlServer.Domains.Db
             foreach (var c in valueToInject)
                 yield return (byte) c;
 
-
-            yield return JsonByteArrayReader.CloseBraket;
-           
+            yield return JsonByteArrayReader.CloseBracket;
             
         }
 
-        public static IEnumerable<ReadOnlyMemory<byte>> SplitByDbRows(this byte[] byteArray)
+        public static IEnumerable<ArraySpan> SplitByDbRows(this byte[] byteArray)
         {
             var objectLevel = 0;
             var startIndex = -1;
@@ -142,7 +136,11 @@ namespace MyNoSqlServer.Domains.Db
                         {
                             objectLevel--;
                             if (objectLevel == 0)
-                                yield return new ReadOnlyMemory<byte>(byteArray, startIndex, i - startIndex+1);
+                                yield return new ArraySpan(byteArray)
+                                {
+                                    StartIndex = startIndex, 
+                                    EndIndex = i
+                                };  
                         }
 
                         break;

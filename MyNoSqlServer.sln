@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyNoSqlServer.Api", "MyNoSq
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyNoSqlServer.AzureStorage", "MyNoSqlServer.AzureStorage\MyNoSqlServer.AzureStorage.csproj", "{745AEF5F-9BCF-4592-9E64-3F75C96D3999}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyNoSqlServerUnitTests", "MyNoSqlServerUnitTests\MyNoSqlServerUnitTests.csproj", "{07D0086D-D420-4764-BD9E-517216A5BE68}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{745AEF5F-9BCF-4592-9E64-3F75C96D3999}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07D0086D-D420-4764-BD9E-517216A5BE68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07D0086D-D420-4764-BD9E-517216A5BE68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07D0086D-D420-4764-BD9E-517216A5BE68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07D0086D-D420-4764-BD9E-517216A5BE68}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

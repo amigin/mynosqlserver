@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MyNoSqlServer.Domains.Db
+namespace MyNoSqlServer.Domains
 {
 
 
@@ -10,12 +10,14 @@ namespace MyNoSqlServer.Domains.Db
     {
         OpenBracket, OpenKey, CloseKey, DoubleColumn, OpenValue, CloseStringValue, CloseNumberOrBoolValue, CloseObject, CloseArray, Comma, EndOfFile
     }
+
+    
     
     public static class JsonByteArrayReader
     {
         
         public const byte OpenBracket = (byte) '{';
-        public const byte CloseBraket = (byte) '}';
+        public const byte CloseBracket = (byte) '}';
         public const byte DoubleQuote = (byte) '"';
         public const byte DoubleColumn = (byte) ':';
         public const byte OpenArray = (byte) '[';
@@ -37,8 +39,6 @@ namespace MyNoSqlServer.Domains.Db
             ['8']='8',
             ['9']='9',
         };
-        
-
 
         private static bool IsSpace(this byte c)
         {
@@ -49,7 +49,6 @@ namespace MyNoSqlServer.Domains.Db
         {
             return c == (byte) 't' || c == (byte) 'f' || c == (byte) 'T' || c == (byte) 'F' || c == (byte)'n' || c == (byte)'N';
         }
-
 
 
         private static void ThrowException(this byte[] byteArray, int position)
@@ -67,17 +66,17 @@ namespace MyNoSqlServer.Domains.Db
             throw new Exception("Invalid Json at position: "+str);
         }
 
-        public static IEnumerable<(KeyValuePair<int, int> field, KeyValuePair<int, int> value)> ParseFirstLevelOfJson(this byte[] byteArray)
+        public static IEnumerable<(ArraySpan field, ArraySpan value)> ParseFirstLevelOfJson(this byte[] byteArray)
         {
             var expectedToken = ExpectedToken.OpenBracket;
 
       
 
-            var start = 0;
             var subObjectLevel = 0;
             var subObjectString = false;
 
-            KeyValuePair<int, int> field = new KeyValuePair<int, int>(0,0);
+            ArraySpan keyField = null;
+            ArraySpan valueField = null;
             
             for (var i = 0; i < byteArray.Length; i++)
             {
@@ -97,7 +96,7 @@ namespace MyNoSqlServer.Domains.Db
                         break;
                     
                     case ExpectedToken.OpenKey:
-                        if (c == CloseBraket)
+                        if (c == CloseBracket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             break;
@@ -109,22 +108,23 @@ namespace MyNoSqlServer.Domains.Db
                         if (c != DoubleQuote)
                             byteArray.ThrowException(i);
                         
-                        start = i;
+                        keyField = new ArraySpan(byteArray){StartIndex = i};
                         expectedToken = ExpectedToken.CloseKey;
                         break;
                     
                     case ExpectedToken.CloseKey:
-                        if (c == EscSymbol)
+                        switch (c)
                         {
-                            i++;
-                            continue;
+                            case EscSymbol:
+                                i++;
+                                break;
+                            case DoubleQuote:
+                                if (keyField != null)
+                                  keyField.EndIndex = i+1;
+                                expectedToken = ExpectedToken.DoubleColumn;
+                                break;
                         }
 
-                        if (c == DoubleQuote)
-                        {
-                            field = new KeyValuePair<int, int>(start, i+1);
-                            expectedToken = ExpectedToken.DoubleColumn;
-                        }
                         break;
                     
                     case ExpectedToken.DoubleColumn:
@@ -141,7 +141,7 @@ namespace MyNoSqlServer.Domains.Db
                         if (c.IsSpace())
                             continue;
 
-                        start = i;
+                        valueField = new ArraySpan(byteArray){StartIndex = i};
                         
                         switch (c)
                         {
@@ -169,24 +169,28 @@ namespace MyNoSqlServer.Domains.Db
                         break;
                     
                     case ExpectedToken.CloseStringValue:
-                        if (c == EscSymbol)
+                        switch (c)
                         {
-                            i++;
-                            continue;
+                            case EscSymbol:
+                                i++;
+                                break;
+                            case DoubleQuote:
+                                if (valueField != null)
+                                  valueField.EndIndex = i + 1;
+                                yield return (keyField, valueField);
+                                expectedToken = ExpectedToken.Comma;
+                                break;
                         }
 
-                        if (c == DoubleQuote)
-                        {
-                            yield return (field, new KeyValuePair<int, int>(start, i+1));
-                            expectedToken = ExpectedToken.Comma;
-                        }
                         break;
                     
                     case ExpectedToken.CloseNumberOrBoolValue:
-                        if (c == Comma || c == CloseBraket || c.IsSpace())
+                        if (c == Comma || c == CloseBracket || c.IsSpace())
                         {
-                            yield return (field, new KeyValuePair<int, int>(start, i));
-                            if (c == CloseBraket)
+                            if (valueField != null)
+                              valueField.EndIndex = i;
+                            yield return (keyField, valueField);
+                            if (c == CloseBracket)
                                 expectedToken = ExpectedToken.EndOfFile;
                             else
                             expectedToken = c == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
@@ -196,7 +200,7 @@ namespace MyNoSqlServer.Domains.Db
                     case ExpectedToken.Comma:
                         if (c.IsSpace())
                         continue;
-                        if (c == CloseBraket)
+                        if (c == CloseBracket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             continue;
@@ -231,16 +235,17 @@ namespace MyNoSqlServer.Domains.Db
                                 case OpenBracket:
                                     subObjectLevel++;
                                     continue;
-                                case CloseBraket when subObjectLevel == 0:
-                                    yield return (field, new KeyValuePair<int, int>(start, i+1));
+                                case CloseBracket when subObjectLevel == 0:
+                                    if (valueField != null)
+                                      valueField.EndIndex = i + 1;
+                                    yield return (keyField, valueField);
                                     expectedToken = ExpectedToken.Comma;
                                     break;
-                                case CloseBraket:
+                                case CloseBracket:
                                     subObjectLevel--;
                                     break;
                             }
                         }
-                        
                         
                         break;
                     
@@ -268,7 +273,9 @@ namespace MyNoSqlServer.Domains.Db
                                     subObjectLevel++;
                                     continue;
                                 case CloseArray when subObjectLevel == 0:
-                                    yield return (field, new KeyValuePair<int, int>(start, i+1));
+                                    if (valueField != null)
+                                      valueField.EndIndex = i + 1;
+                                    yield return (keyField, valueField);
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseArray:
@@ -276,8 +283,6 @@ namespace MyNoSqlServer.Domains.Db
                                     break;
                             }
                         }
-                        
-                        
                         break;                    
                         
                 }

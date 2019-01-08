@@ -68,7 +68,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                     {
                         foreach (var dbRowMemory in snapshot.Snapshot.SplitByDbRows())
                         {
-                            var array = dbRowMemory.ToArray();
+                            var array = dbRowMemory.AsArray();
                             var jsonString = Encoding.UTF8.GetString(array);
                             var entityInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<MyNoSqlDbEntity>(jsonString);                        
                             tableInit.InitDbRecord(entityInfo, array);

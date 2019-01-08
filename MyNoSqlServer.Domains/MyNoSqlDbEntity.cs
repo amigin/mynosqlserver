@@ -14,11 +14,8 @@ namespace MyNoSqlServer.Domains
 
     public class MyNoSqlDbEntity : IMyNoSqlDbEntity
     {
-        [JsonProperty("partitionKey")]        
         public string PartitionKey { get; set; }
-        [JsonProperty("rowKey")]                
         public string RowKey { get; set; }
-        [JsonProperty("timestamp")]                        
         public string Timestamp { get; set; }
 
     }
