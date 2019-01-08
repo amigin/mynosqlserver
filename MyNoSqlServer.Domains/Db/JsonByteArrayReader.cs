@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace MyNoSqlServer.Domains.Db
 {
@@ -53,7 +54,12 @@ namespace MyNoSqlServer.Domains.Db
 
         private static void ThrowException(this byte[] byteArray, int position)
         {
-            throw new Exception("Invalid Json at position: "+position);
+            var i = position - 10;
+            if (i < 0)
+                i = 0;
+
+
+            throw new Exception("Invalid Json at position: "+Encoding.UTF8.GetString(byteArray, i, position-i));
         }
 
         public static IEnumerable<(KeyValuePair<int, int> field, KeyValuePair<int, int> value)> ParseFirstLevelOfJson(this byte[] byteArray)
