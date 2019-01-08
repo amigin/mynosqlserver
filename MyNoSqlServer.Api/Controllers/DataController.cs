@@ -54,7 +54,7 @@ namespace MyNoSqlServer.Api.Controllers
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 
-            var table = DbInstance.GetTable(tableName);
+            var table = DbInstance.CreateTableIfNotExists(tableName);
 
             if (table == null)
                 return this.TableNotFound(tableName);
@@ -78,7 +78,7 @@ namespace MyNoSqlServer.Api.Controllers
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 
-            var table = DbInstance.GetTable(tableName);
+            var table = DbInstance.CreateTableIfNotExists(tableName);
 
             if (table == null)
                 return this.TableNotFound(tableName);
