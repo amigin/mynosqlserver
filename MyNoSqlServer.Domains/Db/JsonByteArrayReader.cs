@@ -58,8 +58,13 @@ namespace MyNoSqlServer.Domains.Db
             if (i < 0)
                 i = 0;
 
+            var str = Encoding.UTF8.GetString(byteArray, i, position - i);
 
-            throw new Exception("Invalid Json at position: "+Encoding.UTF8.GetString(byteArray, i, position-i));
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(str);
+            Console.ResetColor();
+            
+            throw new Exception("Invalid Json at position: "+str);
         }
 
         public static IEnumerable<(KeyValuePair<int, int> field, KeyValuePair<int, int> value)> ParseFirstLevelOfJson(this byte[] byteArray)
