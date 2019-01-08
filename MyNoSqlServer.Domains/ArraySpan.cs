@@ -28,13 +28,18 @@ namespace MyNoSqlServer.Domains
 
         public IEnumerator<byte> GetEnumerator()
         {
-            for (var i = StartIndex; i < StartIndex; i++)
+            for (var i = StartIndex; i < EndIndex; i++)
                 yield return _array[i];
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public override string ToString()
+        {
+            return this.AsString();
         }
     }
     
