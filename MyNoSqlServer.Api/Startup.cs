@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MyNoSqlServer.AzureStorage;
@@ -20,6 +19,9 @@ namespace MyNoSqlServer.Api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            
+            services.AddApplicationInsightsTelemetry(Configuration);
+            
             services.AddMvc().AddJsonOptions(options =>
             {
                 options.SerializerSettings.ContractResolver
