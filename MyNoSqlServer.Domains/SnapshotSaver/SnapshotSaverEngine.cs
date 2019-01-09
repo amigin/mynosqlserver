@@ -59,27 +59,30 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
         private async Task LoadSnapshotsAsync()
         {
 
-            try
-            {
+       
                 var snapshots = await _loadSnapshots();
                 foreach (var snapshot in snapshots)
                 {
-                    using(var tableInit = DbInstance.InitNewTable(snapshot.TableName))
+                    try
                     {
-                        foreach (var dbRowMemory in snapshot.Snapshot.SplitByDbRows())
+                        using (var tableInit = DbInstance.InitNewTable(snapshot.TableName))
                         {
-                            var array = dbRowMemory.AsArray();
-                            var jsonString = Encoding.UTF8.GetString(array);
-                            var entityInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<MyNoSqlDbEntity>(jsonString);                        
-                            tableInit.InitDbRecord(entityInfo, array);
+                            foreach (var dbRowMemory in snapshot.Snapshot.SplitJsonArrayToObjects())
+                            {
+                                var array = dbRowMemory.AsArray();
+                                var jsonString = Encoding.UTF8.GetString(array);
+                                var entityInfo =
+                                    Newtonsoft.Json.JsonConvert.DeserializeObject<MyNoSqlDbEntity>(jsonString);
+                                tableInit.InitDbRecord(entityInfo, array);
+                            }
                         }
                     }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Snapshots {snapshot.TableName} could not be loaded: " + e.Message);
+                    }
+
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Snapshots could not be loaded: "+e.Message);
-            }
 
 
         }

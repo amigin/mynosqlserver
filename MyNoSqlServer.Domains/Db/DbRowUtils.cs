@@ -1,15 +1,7 @@
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using Newtonsoft.Json;
 
 namespace MyNoSqlServer.Domains.Db
 {
-    
-    
-
-    
     
     public static class DbRowUtils
     {
@@ -55,14 +47,16 @@ namespace MyNoSqlServer.Domains.Db
 
         }
         
-        public static IEnumerable<byte> InjectTimestamp(this byte[] byteArray, string timeStamp)
+        public static IEnumerable<byte> InjectTimeStamp(this byte[] data, string timeStamp, Dictionary<string, string> keyValue = null)
         {
+            
+            var copy = keyValue != null ? new Dictionary<string,string>(keyValue) : new Dictionary<string, string>();
             
             var valueToInject =$"\"{timeStamp}\"" ;
 
             yield return JsonByteArrayReader.OpenBracket;
             
-            foreach (var (keySpan, valueSpan) in byteArray.ParseFirstLevelOfJson())
+            foreach (var (keySpan, valueSpan) in data.ParseFirstLevelOfJson())
             {
                 
                 if (keySpan.IsTimeStampField())
@@ -77,6 +71,17 @@ namespace MyNoSqlServer.Domains.Db
                     yield return b;                
                 
                 yield return JsonByteArrayReader.Comma;
+
+
+                if (keyValue != null && copy.Count > 0)
+                {
+                    var key = keySpan.AsString().RemoveDoubleQuotes();
+
+                    if (keyValue.ContainsKey(key))
+                        keyValue[key] = valueSpan.AsString().RemoveDoubleQuotes();
+
+                    copy.Remove(key);
+                }
                 
             }
             
@@ -91,64 +96,7 @@ namespace MyNoSqlServer.Domains.Db
             yield return JsonByteArrayReader.CloseBracket;
             
         }
-
-        public static IEnumerable<ArraySpan> SplitByDbRows(this byte[] byteArray)
-        {
-            var objectLevel = 0;
-            var startIndex = -1;
-
-            var insideString = false;
-            var escapeMode = false;
-
-            
-            for (var i=0; i<byteArray.Length; i++)
-            {
-                if (escapeMode)
-                {
-                    escapeMode = false;
-                    continue;
-                }
-
-                switch (byteArray[i])
-                {
-
-                    case (byte) '\\':
-                        if (insideString)
-                          escapeMode = true;
-                        break;
-                    
-                    case (byte) '"':
-                        insideString = !insideString;
-                        break;
-
-                    case (byte) '{':
-                        if (!insideString)
-                        {
-                            objectLevel++;
-                            if (objectLevel == 1)
-                                startIndex = i;
-                        }
-
-                        break;
-
-                    case (byte) '}':
-                        if (!insideString)
-                        {
-                            objectLevel--;
-                            if (objectLevel == 0)
-                                yield return new ArraySpan(byteArray)
-                                {
-                                    StartIndex = startIndex, 
-                                    EndIndex = i
-                                };  
-                        }
-
-                        break;
-                }
-
-            }
-
-        }
         
     }
+    
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace MyNoSqlServer.Domains.Db
@@ -39,6 +40,8 @@ namespace MyNoSqlServer.Domains.Db
 
         public bool Insert(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
+            var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+            
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
@@ -47,9 +50,7 @@ namespace MyNoSqlServer.Domains.Db
 
                 var partition = Partitions[entityInfo.PartitionKey];
 
-                var row = DbRow.CreateNew(entityInfo, data);
-
-                return partition.Insert(row);
+                return partition.Insert(dbRow);
                 
             }
             finally
@@ -61,9 +62,7 @@ namespace MyNoSqlServer.Domains.Db
         
         public void InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
-
-
-            
+            var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
@@ -72,11 +71,7 @@ namespace MyNoSqlServer.Domains.Db
 
                 var partition = Partitions[entityInfo.PartitionKey];
 
-
-                var row = DbRow.CreateNew(entityInfo, data);
-
-
-                partition.InsertOrReplace(row);
+                partition.InsertOrReplace(dbRow);
             }
             finally
             {
@@ -176,18 +171,65 @@ namespace MyNoSqlServer.Domains.Db
             }
         }
         
-        internal void InitRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
+        internal void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
             if (!Partitions.ContainsKey(entityInfo.PartitionKey))
                 Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
             var partition = Partitions[entityInfo.PartitionKey];
 
-            partition.InitRecord(entityInfo, data);
+            partition.RestoreRecord(entityInfo, data);
 
         }
 
 
+        public bool HasRecord(IMyNoSqlDbEntity entityInfo)
+        {
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                if (!Partitions.ContainsKey(entityInfo.PartitionKey))
+                    return false;
 
+                var partition = Partitions[entityInfo.PartitionKey];
+
+                return partition.HasRecord(entityInfo.RowKey);
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
+        }
+
+
+        public void BulkInsertOrReplace(IEnumerable<ArraySpan> itemsAsArray)
+        {
+
+            var dbRows = itemsAsArray
+                .Select(arraySpan => arraySpan
+                    .AsArray()
+                    .ToDbRow())
+                .ToArray();
+            
+            ReaderWriterLockSlim.EnterWriteLock();
+            try
+            {
+                foreach (var dbRow in dbRows)
+                {
+                    if (!Partitions.ContainsKey(dbRow.PartitionKey))
+                        Partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
+
+                    var partition = Partitions[dbRow.PartitionKey];
+
+                    partition.InsertOrReplace(dbRow);
+                }
+            }
+            finally
+            {
+                UpdateSnapshotId();                
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
+            
+        }
     }
 }

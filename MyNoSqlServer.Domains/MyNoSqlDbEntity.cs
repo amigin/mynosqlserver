@@ -9,7 +9,7 @@ namespace MyNoSqlServer.Domains
     {
         string PartitionKey { get; }
         string RowKey { get; }
-        string Timestamp { get; }
+        string Timestamp { get; set; }
     }
 
     public class MyNoSqlDbEntity : IMyNoSqlDbEntity

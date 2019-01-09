@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
@@ -43,6 +44,42 @@ namespace MyNoSqlServerUnitTests
             Assert.True(result[2].value.AsString() == valueC);
             
             
+        }
+
+
+        [Fact]
+        public void CheckReadingKeysWhileInsertingTimestamp()
+        {
+            var fieldA = "\"Fiel\\\"dA\"";
+            var valueA = "\"ValueA\"";
+            var fieldB = "\"PartitionKey\"";
+            var valueB = "\"ABC\"";
+            
+            var fieldC = "\"FieldC\"";
+            var valueC = "[{\"A\":[1,2,3]},{\"B\":\"[\"}]";
+            
+            var example = "{"+$"{fieldA}:{valueA},{fieldB}:{valueB},{fieldC}:{valueC}"+"}";
+
+            var keyValue = new Dictionary<string, string>
+            {
+                ["PartitionKey"] = null,
+                ["RowKey"] = null,
+            };
+
+            var bytes = Encoding.UTF8.GetBytes(example);
+
+            bytes = bytes.InjectTimeStamp("timestamp", keyValue).ToArray();
+
+            var json = Encoding.UTF8.GetString(bytes);
+
+            var jsonDeserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(json);
+            
+            
+            Assert.Equal("ABC", keyValue["PartitionKey"]);
+            Assert.Null(keyValue["RowKey"]);
+            
+            Assert.Equal("timestamp", (string)jsonDeserialized["Timestamp"]);
+
         }
         
     }

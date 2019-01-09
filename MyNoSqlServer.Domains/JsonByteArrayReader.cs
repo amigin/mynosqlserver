@@ -5,7 +5,6 @@ using System.Text;
 namespace MyNoSqlServer.Domains
 {
 
-
     public enum ExpectedToken
     {
         OpenBracket, OpenKey, CloseKey, DoubleColumn, OpenValue, CloseStringValue, CloseNumberOrBoolValue, CloseObject, CloseArray, Comma, EndOfFile
@@ -293,5 +292,63 @@ namespace MyNoSqlServer.Domains
                 throw new Exception("Invalid Json");
         }
         
+        
+        
+        public static IEnumerable<ArraySpan> SplitJsonArrayToObjects(this byte[] byteArray)
+        {
+            var objectLevel = 0;
+            var startIndex = -1;
+
+            var insideString = false;
+            var escapeMode = false;
+            
+            for (var i=0; i<byteArray.Length; i++)
+            {
+                if (escapeMode)
+                {
+                    escapeMode = false;
+                    continue;
+                }
+
+                switch (byteArray[i])
+                {
+
+                    case (byte) '\\':
+                        if (insideString)
+                            escapeMode = true;
+                        break;
+                    
+                    case (byte) '"':
+                        insideString = !insideString;
+                        break;
+
+                    case (byte) '{':
+                        if (!insideString)
+                        {
+                            objectLevel++;
+                            if (objectLevel == 1)
+                                startIndex = i;
+                        }
+
+                        break;
+
+                    case (byte) '}':
+                        if (!insideString)
+                        {
+                            objectLevel--;
+                            if (objectLevel == 0)
+                                yield return new ArraySpan(byteArray)
+                                {
+                                    StartIndex = startIndex, 
+                                    EndIndex = i+1
+                                };  
+                        }
+
+                        break;
+                }
+
+            }
+
+        }
     }
 }

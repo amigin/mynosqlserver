@@ -7,7 +7,8 @@ namespace MyNoSqlServer.Api.Controllers
 {
     
     [ApiController]    
-    public class DataController : Controller
+    
+    public class RowController : Controller
     {
         [HttpGet("Row")]
         public IActionResult List([Required][FromQuery] string tableName, [FromQuery] string partitionKey,
@@ -56,15 +57,15 @@ namespace MyNoSqlServer.Api.Controllers
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
-            if (table == null)
-                return this.TableNotFound(tableName);
-
 
             if (string.IsNullOrEmpty(body.PartitionKey))
                 return this.PartitionKeyIsNull();
 
             if (string.IsNullOrEmpty(body.RowKey))
                 return this.RowKeyIsNull();
+
+            if (table.HasRecord(body))
+                this.ResponseConflict("Record with the same PartitionKey and RowKey is already exists");
 
             var data = Request.BodyAsByteArray();
             var result = table.Insert(body, data);
@@ -79,10 +80,6 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.TableNameIsNull();
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
-
-            if (table == null)
-                return this.TableNotFound(tableName);
-
 
             if (string.IsNullOrEmpty(body.PartitionKey))
                 return this.PartitionKeyIsNull();

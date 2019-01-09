@@ -17,7 +17,7 @@ namespace MyNoSqlServer.Domains.Db
 
         public void InitDbRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
-            DbTable.InitRecord(entityInfo, data);
+            DbTable.RestoreRecord(entityInfo, data);
         }
 
         public void Dispose()

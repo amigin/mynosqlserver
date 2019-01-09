@@ -41,6 +41,7 @@ namespace MyNoSqlServer.Domains
         {
             return this.AsString();
         }
+
     }
     
     public static class ArraySpanHelpers
@@ -48,6 +49,22 @@ namespace MyNoSqlServer.Domains
         public static string AsString(this ArraySpan arraySpan)
         {
             return Encoding.UTF8.GetString(arraySpan.AsArray());
-        } 
+        }
+
+
+        public static string RemoveDoubleQuotes(this string str)
+        {
+            if (str == null)
+                return str;
+
+            if (str.Length < 2)
+                return str;
+
+
+            if (str[0] == '"' && str[str.Length - 1] == '"')
+                return str.Length == 2 ? string.Empty : str.Substring(1, str.Length - 2);
+
+            return str;
+        }
     }
 }

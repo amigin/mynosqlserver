@@ -35,6 +35,11 @@ namespace MyNoSqlServer.Domains.Db
         {
             return _rows.ContainsKey(rowKey) ? _rows[rowKey] : null;
         }
+
+        public bool HasRecord(string rowKey)
+        {
+            return _rows.ContainsKey(rowKey);
+        }
         
         public DbRow[] GetAllRows()
         {
@@ -74,10 +79,10 @@ namespace MyNoSqlServer.Domains.Db
             return true;
         }
 
-        public void InitRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
+        public void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
             if (!_rows.ContainsKey(entityInfo.RowKey))
-                _rows.Add(entityInfo.RowKey, DbRow.CreateNew(entityInfo, data));
+                _rows.Add(entityInfo.RowKey, DbRow.RestoreSnapshot(entityInfo.PartitionKey, entityInfo.RowKey, data));
         }
 
 
