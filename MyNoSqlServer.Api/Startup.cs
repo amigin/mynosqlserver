@@ -33,7 +33,7 @@ namespace MyNoSqlServer.Api
 
             var settings = SettingsLoader.LoadSettings();
             
-            settings.BackupAzureConnectString.BindAzureStorages();
+            settings.BackupAzureConnectString.BindAzureStorage();
 
         }
 

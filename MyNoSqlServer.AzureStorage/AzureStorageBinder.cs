@@ -7,7 +7,7 @@ namespace MyNoSqlServer.AzureStorage
     public static class AzureStorageBinder
     {
 
-        public static void BindAzureStorages(this string connectionString)
+        public static void BindAzureStorage(this string connectionString)
         {
             if (string.IsNullOrEmpty(connectionString))
                 return;

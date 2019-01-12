@@ -87,6 +87,14 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
 
         }
 
+        private async ValueTask SaveSnapshotAsync(DbTable dbTable)
+        {
+            var dbRowsAsByteArray = dbTable.GetAllRecords(null).ToJsonArray().AsArray();
+            var tableSnapshot = TableSnapshot.Create(dbTable.Name, dbRowsAsByteArray);
+            await _saveSnapshot(tableSnapshot);
+            SnapshotIsSaved(dbTable);
+        }
+
         public async void TheLoop()
         {
 
@@ -99,13 +107,11 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
 
                     foreach (var table in tables)
                     {
-                       
-                        if (!ShouldWeSaveTheSnapshot(table)) continue;
 
-                        var dbRowsAsByteArray = table.GetAllRecords(0).ToJsonArray().AsArray();
-                        var tableSnapshot = TableSnapshot.Create(table.Name, dbRowsAsByteArray);
-                        await _saveSnapshot(tableSnapshot);
-                        SnapshotIsSaved(table);
+                        if (ShouldWeSaveTheSnapshot(table))
+                            await SaveSnapshotAsync(table);
+
+
                     }
 
                 }
