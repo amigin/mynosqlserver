@@ -25,10 +25,10 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
     
     public class SnapshotSaverEngine
     {
-        private readonly Func<TableSnapshot, Task> _saveSnapshot;
-        private readonly Func<Task<IEnumerable<TableSnapshot>>> _loadSnapshots;
+        private readonly Func<TableSnapshot, ValueTask> _saveSnapshot;
+        private readonly Func<ValueTask<IEnumerable<TableSnapshot>>> _loadSnapshots;
 
-        public SnapshotSaverEngine(Func<TableSnapshot, Task> saveSnapshot, Func<Task<IEnumerable<TableSnapshot>>> loadSnapshots)
+        public SnapshotSaverEngine(Func<TableSnapshot, ValueTask> saveSnapshot, Func<ValueTask<IEnumerable<TableSnapshot>>> loadSnapshots)
         {
             _saveSnapshot = saveSnapshot;
             _loadSnapshots = loadSnapshots;

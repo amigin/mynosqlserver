@@ -37,7 +37,7 @@ namespace MyNoSqlServer.AzureStorage
         
         private readonly Dictionary<string, CloudBlobContainer> _containers = new Dictionary<string, CloudBlobContainer>();
         
-        private async Task<CloudBlobContainer> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess = false, bool createIfNotExists = false)
+        private async ValueTask<CloudBlobContainer> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess = false, bool createIfNotExists = false)
         {
             NameValidator.ValidateBlobName(key);
 
@@ -69,7 +69,7 @@ namespace MyNoSqlServer.AzureStorage
             return containerRef;
         }        
 
-        public async Task SaveToBlobAsync(string containerName, string blobName, byte[] bytes)
+        public async ValueTask SaveToBlobAsync(string containerName, string blobName, byte[] bytes)
         {
             var container = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
 
@@ -79,7 +79,7 @@ namespace MyNoSqlServer.AzureStorage
             await blob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
         }
         
-        public async Task<byte[]> LoadBlobAsync(string containerName, string blobName)
+        public async ValueTask<byte[]> LoadBlobAsync(string containerName, string blobName)
         {
             var container = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
 
@@ -93,7 +93,7 @@ namespace MyNoSqlServer.AzureStorage
         }        
 
 
-        public async Task<IEnumerable<string>> GetFilesAsync(string containerName)
+        public async ValueTask<IEnumerable<string>> GetFilesAsync(string containerName)
         {
             var blobRef = GetContainerReference(containerName);
 
