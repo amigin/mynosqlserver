@@ -55,15 +55,13 @@ namespace MyNoSqlServer.AzureStorage
             return containerRef.GetBlockBlobReference(key);
         }        
 
-        public async Task SaveToBlobAsync(string containerName, string blobName, byte[] data)
+        public async Task SaveToBlobAsync(string containerName, string blobName, byte[] bytes)
         {
             var blockBlob = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
-
+            
             blockBlob.Properties.ContentType = "application/json";
 
-            var memoryStream = new MemoryStream(data);
-
-            await blockBlob.UploadFromStreamAsync(memoryStream, null, GetRequestOptions(), null);
+            await blockBlob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
         }
         
         public async Task<byte[]> LoadBlobAsync(string containerName, string blobName)
