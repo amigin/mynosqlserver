@@ -6,9 +6,19 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Flurl.Http">
+        <Version>2.4.0</Version>
+      </PackageReference>
       <PackageReference Include="Newtonsoft.Json">
         <Version>11.0.2</Version>
       </PackageReference>
+      <PackageReference Include="System.Threading.Tasks.Dataflow">
+        <Version>4.9.0</Version>
+      </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Common\Common.csproj" />
     </ItemGroup>
 
 </Project>

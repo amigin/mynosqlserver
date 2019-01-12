@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Common;
 
 namespace MyNoSqlServer.Domains.Db
 {
@@ -41,6 +42,8 @@ namespace MyNoSqlServer.Domains.Db
         public bool Insert(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
             var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+
+            var response = false;
             
             ReaderWriterLockSlim.EnterWriteLock();
             try
@@ -50,14 +53,18 @@ namespace MyNoSqlServer.Domains.Db
 
                 var partition = Partitions[entityInfo.PartitionKey];
 
-                return partition.Insert(dbRow);
+                response = partition.Insert(dbRow);
                 
             }
             finally
             {
                 UpdateSnapshotId();
                 ReaderWriterLockSlim.ExitWriteLock();
+                if (response)
+                    ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, new[]{dbRow});
             }
+
+            return response;
         }
         
         public void InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)
@@ -77,6 +84,7 @@ namespace MyNoSqlServer.Domains.Db
             {
                 UpdateSnapshotId();                
                 ReaderWriterLockSlim.ExitWriteLock();
+                ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, new[]{dbRow});
             }
         }    
 
@@ -202,7 +210,7 @@ namespace MyNoSqlServer.Domains.Db
         }
 
 
-        public void BulkInsertOrReplace(IEnumerable<ArraySpan> itemsAsArray)
+        public void BulkInsertOrReplace(IEnumerable<ByteArraySpan> itemsAsArray)
         {
 
             var dbRows = itemsAsArray
@@ -228,8 +236,9 @@ namespace MyNoSqlServer.Domains.Db
             {
                 UpdateSnapshotId();                
                 ReaderWriterLockSlim.ExitWriteLock();
+                ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, dbRows);
             }
-            
         }
+        
     }
 }

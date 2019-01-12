@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Common;
 
 namespace MyNoSqlServer.Domains
 {
@@ -65,7 +66,7 @@ namespace MyNoSqlServer.Domains
             throw new Exception("Invalid Json at position: "+str);
         }
 
-        public static IEnumerable<(ArraySpan field, ArraySpan value)> ParseFirstLevelOfJson(this byte[] byteArray)
+        public static IEnumerable<(ByteArraySpan field, ByteArraySpan value)> ParseFirstLevelOfJson(this byte[] byteArray)
         {
             var expectedToken = ExpectedToken.OpenBracket;
 
@@ -74,8 +75,10 @@ namespace MyNoSqlServer.Domains
             var subObjectLevel = 0;
             var subObjectString = false;
 
-            ArraySpan keyField = null;
-            ArraySpan valueField = null;
+            var keyStartIndex = 0;
+            var keyEndIndex = 0;
+            
+            var valueStartIndex = 0;
             
             for (var i = 0; i < byteArray.Length; i++)
             {
@@ -106,8 +109,8 @@ namespace MyNoSqlServer.Domains
                         
                         if (c != DoubleQuote)
                             byteArray.ThrowException(i);
-                        
-                        keyField = new ArraySpan(byteArray){StartIndex = i};
+
+                        keyStartIndex = i;
                         expectedToken = ExpectedToken.CloseKey;
                         break;
                     
@@ -118,8 +121,7 @@ namespace MyNoSqlServer.Domains
                                 i++;
                                 break;
                             case DoubleQuote:
-                                if (keyField != null)
-                                  keyField.EndIndex = i+1;
+                                keyEndIndex = i + 1;
                                 expectedToken = ExpectedToken.DoubleColumn;
                                 break;
                         }
@@ -140,7 +142,7 @@ namespace MyNoSqlServer.Domains
                         if (c.IsSpace())
                             continue;
 
-                        valueField = new ArraySpan(byteArray){StartIndex = i};
+                        valueStartIndex = i;
                         
                         switch (c)
                         {
@@ -174,9 +176,9 @@ namespace MyNoSqlServer.Domains
                                 i++;
                                 break;
                             case DoubleQuote:
-                                if (valueField != null)
-                                  valueField.EndIndex = i + 1;
-                                yield return (keyField, valueField);
+                                yield return (
+                                    new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
+                                    new ByteArraySpan(byteArray, valueStartIndex, i+1));
                                 expectedToken = ExpectedToken.Comma;
                                 break;
                         }
@@ -186,9 +188,9 @@ namespace MyNoSqlServer.Domains
                     case ExpectedToken.CloseNumberOrBoolValue:
                         if (c == Comma || c == CloseBracket || c.IsSpace())
                         {
-                            if (valueField != null)
-                              valueField.EndIndex = i;
-                            yield return (keyField, valueField);
+                            yield return (
+                                new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
+                                new ByteArraySpan(byteArray, valueStartIndex, i));
                             if (c == CloseBracket)
                                 expectedToken = ExpectedToken.EndOfFile;
                             else
@@ -235,9 +237,9 @@ namespace MyNoSqlServer.Domains
                                     subObjectLevel++;
                                     continue;
                                 case CloseBracket when subObjectLevel == 0:
-                                    if (valueField != null)
-                                      valueField.EndIndex = i + 1;
-                                    yield return (keyField, valueField);
+                                    yield return (
+                                        new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
+                                        new ByteArraySpan(byteArray, valueStartIndex, i + 1));
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseBracket:
@@ -272,9 +274,9 @@ namespace MyNoSqlServer.Domains
                                     subObjectLevel++;
                                     continue;
                                 case CloseArray when subObjectLevel == 0:
-                                    if (valueField != null)
-                                      valueField.EndIndex = i + 1;
-                                    yield return (keyField, valueField);
+                                    yield return (
+                                        new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
+                                        new ByteArraySpan(byteArray, valueStartIndex, i + 1));
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseArray:
@@ -294,7 +296,7 @@ namespace MyNoSqlServer.Domains
         
         
         
-        public static IEnumerable<ArraySpan> SplitJsonArrayToObjects(this byte[] byteArray)
+        public static IEnumerable<ByteArraySpan> SplitJsonArrayToObjects(this byte[] byteArray)
         {
             var objectLevel = 0;
             var startIndex = -1;
@@ -337,11 +339,7 @@ namespace MyNoSqlServer.Domains
                         {
                             objectLevel--;
                             if (objectLevel == 0)
-                                yield return new ArraySpan(byteArray)
-                                {
-                                    StartIndex = startIndex, 
-                                    EndIndex = i+1
-                                };  
+                                yield return new ByteArraySpan(byteArray, startIndex, i + 1);
                         }
 
                         break;

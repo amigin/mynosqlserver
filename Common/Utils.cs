@@ -1,6 +1,6 @@
 using System;
 
-namespace MyNoSqlServer.Domains
+namespace Common
 {
     public static class Utils
     {

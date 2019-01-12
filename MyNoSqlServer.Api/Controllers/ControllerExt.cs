@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyNoSqlServer.Domains.Db;
@@ -13,7 +12,6 @@ namespace MyNoSqlServer.Api.Controllers
         {
             return ctx.Content("OK");
         }
-
 
         public static IActionResult ResponseConflict(this Controller ctx, string message)
         {
@@ -56,10 +54,8 @@ namespace MyNoSqlServer.Api.Controllers
         
         public static IActionResult ToDbRowsResult(this Controller ctx, IEnumerable<DbRow> dbRows)
         {
-            return ctx.File(dbRows.ToJsonArray().ToArray(), AppJsonContentType);
+            return ctx.File(dbRows.ToJsonArray().AsArray(), AppJsonContentType);
         }
-        
-
 
         public static byte[] BodyAsByteArray(this HttpRequest request)
         {

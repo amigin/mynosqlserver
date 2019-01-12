@@ -102,7 +102,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                        
                         if (!ShouldWeSaveTheSnapshot(table)) continue;
 
-                        var dbRowsAsByteArray = table.GetAllRecords(0).ToJsonArray().ToArray();
+                        var dbRowsAsByteArray = table.GetAllRecords(0).ToJsonArray().AsArray();
                         var tableSnapshot = TableSnapshot.Create(table.Name, dbRowsAsByteArray);
                         await _saveSnapshot(tableSnapshot);
                         SnapshotIsSaved(table);

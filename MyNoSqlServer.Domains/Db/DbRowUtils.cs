@@ -1,14 +1,16 @@
 using System.Collections.Generic;
+using System.Text;
+using Common;
 
 namespace MyNoSqlServer.Domains.Db
 {
     
     public static class DbRowUtils
     {
-        
-        public static IEnumerable<byte> ToJsonArray(this IEnumerable<DbRow> dbRows)
+        public static ChunkedStream ToJsonArray(this IEnumerable<DbRow> dbRows)
         {
-            yield return (byte) '[';
+            var result = new ChunkedStream();
+            result.Write(OpenArray);
 
             var firstLine = true;
             foreach (var row in dbRows)
@@ -16,19 +18,19 @@ namespace MyNoSqlServer.Domains.Db
                 if (firstLine)
                     firstLine = false;
                 else
-                    yield return (byte) ',';
+                    result.Write(Comma);
 
-                foreach (var b in row.Data)
-                    yield return b;
+                result.Write(row.Data.ToByteArraySpan());
             }
 
-            yield return (byte) ']';
+            result.Write(CloseArray);
+
+            return result;
 
         }
 
-
         private const string FieldToYield = "\"Timestamp\"";
-        private static bool IsTimeStampField(this ArraySpan span)
+        private static bool IsTimeStampField(this ByteArraySpan span)
         {
 
             if (span.Length != FieldToYield.Length)
@@ -47,14 +49,28 @@ namespace MyNoSqlServer.Domains.Db
 
         }
         
-        public static IEnumerable<byte> InjectTimeStamp(this byte[] data, string timeStamp, Dictionary<string, string> keyValue = null)
+        private static readonly ByteArraySpan OpenArray = new[] {JsonByteArrayReader.OpenArray}.ToByteArraySpan();
+        private static readonly ByteArraySpan CloseArray = new[] {JsonByteArrayReader.CloseArray}.ToByteArraySpan();
+        
+        private static readonly ByteArraySpan OpenBracket = new[] {JsonByteArrayReader.OpenBracket}.ToByteArraySpan();
+        private static readonly ByteArraySpan CloseBracket = new[] {JsonByteArrayReader.CloseBracket}.ToByteArraySpan();
+        
+        private static readonly ByteArraySpan DoubleColumn = new[] {JsonByteArrayReader.DoubleColumn}.ToByteArraySpan();
+        private static readonly ByteArraySpan Comma = new[] {JsonByteArrayReader.Comma}.ToByteArraySpan();
+
+        private static readonly ByteArraySpan TimestampFieldAndDoubleColumn = Encoding.UTF8.GetBytes(FieldToYield+":").ToByteArraySpan();
+        public static ChunkedStream InjectTimeStamp(this byte[] data, string timeStamp, Dictionary<string, string> keyValue = null)
         {
             
             var copy = keyValue != null ? new Dictionary<string,string>(keyValue) : new Dictionary<string, string>();
             
             var valueToInject =$"\"{timeStamp}\"" ;
+            
+            var result = new ChunkedStream();
 
-            yield return JsonByteArrayReader.OpenBracket;
+            
+            result.Write(OpenBracket);
+
             
             foreach (var (keySpan, valueSpan) in data.ParseFirstLevelOfJson())
             {
@@ -62,15 +78,13 @@ namespace MyNoSqlServer.Domains.Db
                 if (keySpan.IsTimeStampField())
                     continue;
 
-                foreach (var b in keySpan)
-                    yield return b;
+                result.Write(keySpan);
                 
-                yield return JsonByteArrayReader.DoubleColumn;
+                result.Write(DoubleColumn);
                 
-                foreach (var b in valueSpan)
-                    yield return b;                
+                result.Write(valueSpan);
                 
-                yield return JsonByteArrayReader.Comma;
+                result.Write(Comma);
 
 
                 if (keyValue != null && copy.Count > 0)
@@ -85,16 +99,15 @@ namespace MyNoSqlServer.Domains.Db
                 
             }
             
-            foreach (var c in FieldToYield)
-                yield return (byte) c;
-                
-            yield return JsonByteArrayReader.DoubleColumn;
             
-            foreach (var c in valueToInject)
-                yield return (byte) c;
+            result.Write(TimestampFieldAndDoubleColumn);
+            
+            result.Write(Encoding.UTF8.GetBytes(valueToInject).ToByteArraySpan());
+            
+            result.Write(CloseBracket);
 
-            yield return JsonByteArrayReader.CloseBracket;
-            
+            return result;
+
         }
         
     }

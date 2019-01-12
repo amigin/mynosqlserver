@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+using Common;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
 using Xunit;
@@ -25,7 +25,7 @@ namespace MyNoSqlServerUnitTests
 
             var byteArray = Encoding.UTF8.GetBytes(example);
 
-            var result = new List<(ArraySpan key, ArraySpan value)>();
+            var result = new List<(ByteArraySpan key, ByteArraySpan value)>();
 
             foreach (var kvp in byteArray.ParseFirstLevelOfJson())
             {
@@ -68,7 +68,7 @@ namespace MyNoSqlServerUnitTests
 
             var bytes = Encoding.UTF8.GetBytes(example);
 
-            bytes = bytes.InjectTimeStamp("timestamp", keyValue).ToArray();
+            bytes = bytes.InjectTimeStamp("timestamp", keyValue).AsArray();
 
             var json = Encoding.UTF8.GetString(bytes);
 

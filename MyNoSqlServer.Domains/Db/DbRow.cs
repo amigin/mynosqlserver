@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MyNoSqlServer.Domains.Db
 {
@@ -29,14 +28,14 @@ namespace MyNoSqlServer.Domains.Db
         public static DbRow CreateNew(string partitionKey, string rowKey, byte[] data)
         {
             var timeStamp = DateTime.UtcNow.ToTimeStampString();
-            data = data.InjectTimeStamp(timeStamp).ToArray();
+            data = data.InjectTimeStamp(timeStamp).AsArray();
             return new DbRow(partitionKey, rowKey, timeStamp, data);
         }
 
         public static DbRow RestoreSnapshot(string partitionKey, string rowKey, byte[] data)
         {
             var timeStamp = DateTime.UtcNow.ToTimeStampString();
-            data = data.InjectTimeStamp(timeStamp).ToArray();
+            data = data.InjectTimeStamp(timeStamp).AsArray();
             return new DbRow(partitionKey, rowKey, timeStamp, data);
         }
 
@@ -48,7 +47,7 @@ namespace MyNoSqlServer.Domains.Db
                 [DbRowDataUtils.RowKeyField] = null,
             };
             var timeStamp = DateTime.UtcNow.ToTimeStampString();
-            data = data.InjectTimeStamp(timeStamp, keyValue).ToArray();
+            data = data.InjectTimeStamp(timeStamp, keyValue).AsArray();
 
 
             return new DbRow(keyValue[DbRowDataUtils.PartitionKeyField],
@@ -58,8 +57,6 @@ namespace MyNoSqlServer.Domains.Db
         }
 
     }
-
-
 
     public static class DbRowHelpers
     {
