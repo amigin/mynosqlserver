@@ -35,7 +35,7 @@ namespace MyNoSqlServer.AzureStorage
             };
         }
         
-        private Dictionary<string, CloudBlobContainer> _containers = new Dictionary<string, CloudBlobContainer>();
+        private readonly Dictionary<string, CloudBlobContainer> _containers = new Dictionary<string, CloudBlobContainer>();
         
         private async Task<CloudBlobContainer> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess = false, bool createIfNotExists = false)
         {
