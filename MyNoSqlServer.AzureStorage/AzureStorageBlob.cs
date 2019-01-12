@@ -35,9 +35,17 @@ namespace MyNoSqlServer.AzureStorage
             };
         }
         
-        private async Task<CloudBlockBlob> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess = false, bool createIfNotExists = false)
+        private Dictionary<string, CloudBlobContainer> _containers = new Dictionary<string, CloudBlobContainer>();
+        
+        private async Task<CloudBlobContainer> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess = false, bool createIfNotExists = false)
         {
             NameValidator.ValidateBlobName(key);
+
+            lock (_containers)
+            {
+                if (_containers.ContainsKey(container))
+                    return _containers[container];
+            }
 
             var containerRef = GetContainerReference(container);
 
@@ -51,24 +59,31 @@ namespace MyNoSqlServer.AzureStorage
                 permissions.PublicAccess = BlobContainerPublicAccessType.Container;
                 await containerRef.SetPermissionsAsync(permissions, null, GetRequestOptions(), null);
             }
+
+            lock (_containers)
+            {
+                if (!_containers.ContainsKey(container))
+                    _containers.Add(container, containerRef);
+            }
             
-            return containerRef.GetBlockBlobReference(key);
+            return containerRef;
         }        
 
         public async Task SaveToBlobAsync(string containerName, string blobName, byte[] bytes)
         {
-            var blockBlob = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
-            
-            blockBlob.Properties.ContentType = "application/json";
+            var container = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
 
-            await blockBlob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
+            var blob = container.GetBlockBlobReference(blobName);
+            blob.Properties.ContentType = "application/json";
+
+            await blob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
         }
         
         public async Task<byte[]> LoadBlobAsync(string containerName, string blobName)
         {
-            var blockBlob = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
+            var container = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
 
-            blockBlob.Properties.ContentType = "application/json";
+            var blockBlob = container.GetBlockBlobReference(blobName);
             
             var memoryStream = new MemoryStream();
 
