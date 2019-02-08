@@ -62,7 +62,7 @@ namespace MyNoSqlServer.Domains.Db
             }
             finally
             {
-                ReaderWriterLockSlim.EnterWriteLock();
+                ReaderWriterLockSlim.ExitWriteLock();
             }
 
         }
