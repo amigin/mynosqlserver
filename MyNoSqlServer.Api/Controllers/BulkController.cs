@@ -18,7 +18,7 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.TableNameIsNull();
             
             var table = DbInstance.CreateTableIfNotExists(tableName);
-            
+
             var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToArray();
 
             table.BulkInsertOrReplace(entitiesToInsert);

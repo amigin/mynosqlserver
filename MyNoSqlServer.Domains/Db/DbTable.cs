@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Common;
 
@@ -16,9 +17,7 @@ namespace MyNoSqlServer.Domains.Db
 
         public static DbTable CreateByRequest(string name)
         {
-            var result = new DbTable(name);
-            result.UpdateSnapshotId();
-            return result;
+            return new DbTable(name);
         }
         
         public static DbTable CreateByInit(string name)
@@ -27,17 +26,46 @@ namespace MyNoSqlServer.Domains.Db
         }
         
         public string Name { get; }
-
-        public string SnapshotId;
-
-        private void UpdateSnapshotId()
-        {
-            SnapshotId = Guid.NewGuid().ToString("N");
-        }
         
         internal readonly ReaderWriterLockSlim ReaderWriterLockSlim = new ReaderWriterLockSlim();
         
         public readonly SortedDictionary<string, DbPartition> Partitions = new SortedDictionary<string, DbPartition>();
+
+
+        public void InitPartitionFromSnapshot(string partitionKey, byte[] data)
+        {
+            
+            ReaderWriterLockSlim.EnterWriteLock();
+            try
+            {
+                
+                foreach (var dbRowMemory in data.SplitJsonArrayToObjects())
+                {
+                    var array = dbRowMemory.AsArray();
+                    var jsonString = Encoding.UTF8.GetString(array);
+                    var entityInfo =
+                        Newtonsoft.Json.JsonConvert.DeserializeObject<MyNoSqlDbEntity>(jsonString);
+                    
+                    if (entityInfo.PartitionKey != partitionKey)
+                        continue;
+                    
+                    if (!Partitions.ContainsKey(entityInfo.PartitionKey))
+                        Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
+                    
+                    var partition = Partitions[entityInfo.PartitionKey];
+                    
+                    var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+
+                    partition.InsertOrReplace(dbRow);
+                   
+                }
+            }
+            finally
+            {
+                ReaderWriterLockSlim.EnterWriteLock();
+            }
+
+        }
 
         public bool Insert(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
@@ -55,10 +83,10 @@ namespace MyNoSqlServer.Domains.Db
 
                 response = partition.Insert(dbRow);
                 
+                ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition);                
             }
             finally
             {
-                UpdateSnapshotId();
                 ReaderWriterLockSlim.ExitWriteLock();
                 if (response)
                     ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, new[]{dbRow});
@@ -79,10 +107,12 @@ namespace MyNoSqlServer.Domains.Db
                 var partition = Partitions[entityInfo.PartitionKey];
 
                 partition.InsertOrReplace(dbRow);
+                
+                ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition);                
+
             }
             finally
             {
-                UpdateSnapshotId();                
                 ReaderWriterLockSlim.ExitWriteLock();
                 ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, new[]{dbRow});
             }
@@ -170,11 +200,12 @@ namespace MyNoSqlServer.Domains.Db
 
                 var partition = Partitions[partitionKey];
 
+                ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition);  
+                
                 return partition.DeleteRow(rowKey);
             }
             finally
             {
-                UpdateSnapshotId();                  
                 ReaderWriterLockSlim.ExitWriteLock();
             }
         }
@@ -230,11 +261,14 @@ namespace MyNoSqlServer.Domains.Db
                     var partition = Partitions[dbRow.PartitionKey];
 
                     partition.InsertOrReplace(dbRow);
+                    
+                    ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition); 
+
                 }
             }
             finally
             {
-                UpdateSnapshotId();                
+                               
                 ReaderWriterLockSlim.ExitWriteLock();
                 ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, dbRows);
             }

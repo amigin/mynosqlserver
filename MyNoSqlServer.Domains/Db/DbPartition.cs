@@ -9,7 +9,7 @@ namespace MyNoSqlServer.Domains.Db
     /// </summary>
     public class DbPartition
     {
-        private string PartitionKey { get; set; }
+        public string PartitionKey { get; private set; }
         
         private readonly SortedDictionary<string, DbRow> _rows = new SortedDictionary<string, DbRow>();
 

@@ -1,23 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using MyNoSqlServer.Domains.Db;
 
 namespace MyNoSqlServer.Domains.SnapshotSaver
 {
 
-    public class TableSnapshot
+    public class PartitionSnapshot
     {
         public string TableName { get; set; }
+        public string PartitionKey { get; set; }
         public byte[] Snapshot { get; set; }
 
-        public static TableSnapshot Create(string tableName, byte[] snapshot)
+        public static PartitionSnapshot Create(string tableName, string partitionKey, byte[] snapshot)
         {
-            return new TableSnapshot
+            return new PartitionSnapshot
             {
                 TableName = tableName,
+                PartitionKey = partitionKey,
                 Snapshot = snapshot
             };
         }
@@ -25,74 +25,53 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
     
     public class SnapshotSaverEngine
     {
-        private readonly Func<TableSnapshot, ValueTask> _saveSnapshot;
-        private readonly Func<ValueTask<IEnumerable<TableSnapshot>>> _loadSnapshots;
+        
+        private readonly QueueToSaveSnapshot _queueToSaveSnapshot = new QueueToSaveSnapshot();
 
-        public SnapshotSaverEngine(Func<TableSnapshot, ValueTask> saveSnapshot, Func<ValueTask<IEnumerable<TableSnapshot>>> loadSnapshots)
+        public void Synchronize(string tableName, DbPartition partitionToSave)
+        {
+            _queueToSaveSnapshot.Enqueue(tableName, partitionToSave);
+        }        
+        
+        private readonly Func<PartitionSnapshot, ValueTask> _saveSnapshot;
+        private readonly Func<Task<IEnumerable<PartitionSnapshot>>> _loadSnapshots;
+
+        public SnapshotSaverEngine(Func<PartitionSnapshot, ValueTask> saveSnapshot, Func<Task<IEnumerable<PartitionSnapshot>>> loadSnapshots)
         {
             _saveSnapshot = saveSnapshot;
             _loadSnapshots = loadSnapshots;
         }
-        
-        private readonly Dictionary<string, string> _lastSavedSnapshotsIds = new Dictionary<string, string>();
-
-        private bool ShouldWeSaveTheSnapshot(DbTable dbTable)
-        {
-            if (dbTable.SnapshotId == null)
-                return false;
-            
-            if (_lastSavedSnapshotsIds.ContainsKey(dbTable.Name))
-                return _lastSavedSnapshotsIds[dbTable.Name] != dbTable.SnapshotId;
-
-            return true;
-        }
-
-        private void SnapshotIsSaved(DbTable dbTable)
-        {
-            if (_lastSavedSnapshotsIds.ContainsKey(dbTable.Name))
-                _lastSavedSnapshotsIds[dbTable.Name] = dbTable.SnapshotId;
-            else
-                _lastSavedSnapshotsIds.Add(dbTable.Name, dbTable.SnapshotId);
-        }
-
 
         private async Task LoadSnapshotsAsync()
         {
 
-       
-                var snapshots = await _loadSnapshots();
-                foreach (var snapshot in snapshots)
+            var snapshots = await _loadSnapshots();
+            foreach (var snapshot in snapshots)
+            {
+                
+                try
                 {
-                    try
-                    {
-                        using (var tableInit = DbInstance.InitNewTable(snapshot.TableName))
-                        {
-                            foreach (var dbRowMemory in snapshot.Snapshot.SplitJsonArrayToObjects())
-                            {
-                                var array = dbRowMemory.AsArray();
-                                var jsonString = Encoding.UTF8.GetString(array);
-                                var entityInfo =
-                                    Newtonsoft.Json.JsonConvert.DeserializeObject<MyNoSqlDbEntity>(jsonString);
-                                tableInit.InitDbRecord(entityInfo, array);
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine($"Snapshots {snapshot.TableName} could not be loaded: " + e.Message);
-                    }
 
+                    var table = DbInstance.CreateTableIfNotExists(snapshot.TableName);
+                    table.InitPartitionFromSnapshot(snapshot.PartitionKey, snapshot.Snapshot);
+       
                 }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Snapshots {snapshot.TableName}/{snapshot.PartitionKey} could not be loaded: " + e.Message);
+                }
+
+            }
 
 
         }
 
-        private async ValueTask SaveSnapshotAsync(DbTable dbTable)
+        private async ValueTask SaveSnapshotAsync(string tableName, DbPartition dbPartition)
         {
-            var dbRowsAsByteArray = dbTable.GetAllRecords(null).ToJsonArray().AsArray();
-            var tableSnapshot = TableSnapshot.Create(dbTable.Name, dbRowsAsByteArray);
+            var dbRowsAsByteArray = dbPartition.GetAllRows().ToJsonArray().AsArray();
+            
+            var tableSnapshot = PartitionSnapshot.Create(tableName, dbPartition.PartitionKey, dbRowsAsByteArray);
             await _saveSnapshot(tableSnapshot);
-            SnapshotIsSaved(dbTable);
         }
 
         public async void TheLoop()
@@ -103,15 +82,12 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             while (true)
                 try
                 {
-                    var tables = DbInstance.GetTables();
+                    var elementToSave = _queueToSaveSnapshot.Dequeue();
 
-                    foreach (var table in tables)
+                    while (elementToSave.tableName != null)
                     {
-
-                        if (ShouldWeSaveTheSnapshot(table))
-                            await SaveSnapshotAsync(table);
-
-
+                        await SaveSnapshotAsync(elementToSave.tableName, elementToSave.dbPartition);
+                        elementToSave = _queueToSaveSnapshot.Dequeue();
                     }
 
                 }
@@ -121,7 +97,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 }
                 finally
                 {
-                    await Task.Delay(10000);
+                    await Task.Delay(1000);
                 }
         }
 

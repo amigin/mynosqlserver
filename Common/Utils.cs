@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 
 namespace Common
 {
@@ -33,6 +34,20 @@ namespace Common
             return line + theChar;
 
         }
+
+
+        public static string ToBase64(this string src)
+        {
+            var bytes = Encoding.UTF8.GetBytes(src);
+            return Convert.ToBase64String(bytes);
+        }
+        
+        public static string Base64ToString(this string src)
+        {            
+            var bytes = Convert.FromBase64String(src);;
+            return Encoding.UTF8.GetString(bytes);
+        }
+
         
     }
     

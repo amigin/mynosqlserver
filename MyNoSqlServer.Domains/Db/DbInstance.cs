@@ -1,32 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
 namespace MyNoSqlServer.Domains.Db
 {
-    public class DbInitHandle : IDisposable
-    {
-        internal readonly DbTable DbTable;
-
-        public DbInitHandle(string tableName)
-        {
-            DbTable = DbTable.CreateByInit(tableName);
-            DbTable.ReaderWriterLockSlim.EnterWriteLock();
-        }
-
-        public void InitDbRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
-        {
-            DbTable.RestoreRecord(entityInfo, data);
-        }
-
-        public void Dispose()
-        {
-            DbTable.ReaderWriterLockSlim.ExitWriteLock();
-        }
-    }
-
-    
     public static class DbInstance
     {
         
@@ -127,23 +104,6 @@ namespace MyNoSqlServer.Domains.Db
             
         }
         
-
-
-        public static DbInitHandle InitNewTable(string tableName)
-        {
-            var result = new DbInitHandle(tableName);
-            ReaderWriterLockSlim.EnterWriteLock();
-            try
-            {
-                Tables.Add(result.DbTable.Name, result.DbTable);
-            }
-            finally
-            {
-                ReaderWriterLockSlim.ExitWriteLock();
-            }
-
-            return result;
-        }
 
     }
 }
