@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Common;
+using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.SnapshotSaver;
 
 namespace MyNoSqlServer.AzureStorage
@@ -61,6 +62,7 @@ namespace MyNoSqlServer.AzureStorage
 
             );
 
+            ServiceLocator.SnapshotSaverEngine = SnapshotSaverEngine.Instance;
             SnapshotSaverEngine.Instance.Start();
         }
 
