@@ -54,7 +54,7 @@ namespace MyNoSqlServer.Domains.Db
                     
                     var partition = Partitions[entityInfo.PartitionKey];
                     
-                    var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+                    var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, array);
 
                     partition.InsertOrReplace(dbRow);
                    
