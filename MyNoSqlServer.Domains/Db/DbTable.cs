@@ -241,7 +241,7 @@ namespace MyNoSqlServer.Domains.Db
         }
 
 
-        public void BulkInsertOrReplace(IEnumerable<ByteArraySpan> itemsAsArray)
+        public void BulkInsertOrReplace(IEnumerable<ArraySpan<byte>> itemsAsArray)
         {
 
             var dbRows = itemsAsArray

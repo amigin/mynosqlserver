@@ -66,26 +66,27 @@ namespace MyNoSqlServer.Domains
             throw new Exception("Invalid Json at position: "+str);
         }
 
-        public static IEnumerable<(ByteArraySpan field, ByteArraySpan value)> ParseFirstLevelOfJson(this byte[] byteArray)
+        public static IEnumerable<(ArraySpan<byte> field, ArraySpan<byte> value)> ParseFirstLevelOfJson(
+            this byte[] byteArray)
         {
             var expectedToken = ExpectedToken.OpenBracket;
 
-      
+
 
             var subObjectLevel = 0;
             var subObjectString = false;
 
             var keyStartIndex = 0;
             var keyEndIndex = 0;
-            
+
             var valueStartIndex = 0;
-            
+
             for (var i = 0; i < byteArray.Length; i++)
             {
                 var c = byteArray[i];
                 if (expectedToken == ExpectedToken.EndOfFile)
                     break;
-                
+
                 switch (expectedToken)
                 {
                     case ExpectedToken.OpenBracket:
@@ -96,24 +97,24 @@ namespace MyNoSqlServer.Domains
 
                         expectedToken = ExpectedToken.OpenKey;
                         break;
-                    
+
                     case ExpectedToken.OpenKey:
                         if (c == CloseBracket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             break;
                         }
-                        
+
                         if (c.IsSpace())
                             continue;
-                        
+
                         if (c != DoubleQuote)
                             byteArray.ThrowException(i);
 
                         keyStartIndex = i;
                         expectedToken = ExpectedToken.CloseKey;
                         break;
-                    
+
                     case ExpectedToken.CloseKey:
                         switch (c)
                         {
@@ -127,23 +128,23 @@ namespace MyNoSqlServer.Domains
                         }
 
                         break;
-                    
+
                     case ExpectedToken.DoubleColumn:
                         if (c.IsSpace())
                             continue;
-                        
+
                         if (c != DoubleColumn)
                             byteArray.ThrowException(i);
-                        
-                        expectedToken = ExpectedToken.OpenValue;                        
+
+                        expectedToken = ExpectedToken.OpenValue;
                         break;
-                    
+
                     case ExpectedToken.OpenValue:
                         if (c.IsSpace())
                             continue;
 
                         valueStartIndex = i;
-                        
+
                         switch (c)
                         {
                             case OpenArray:
@@ -159,7 +160,7 @@ namespace MyNoSqlServer.Domains
                                 break;
                             default:
                             {
-                                if (StartOfDigit.ContainsKey((char)c) || c.IsStartOfBool())
+                                if (StartOfDigit.ContainsKey((char) c) || c.IsStartOfBool())
                                     expectedToken = ExpectedToken.CloseNumberOrBoolValue;
                                 else
                                     byteArray.ThrowException(i);
@@ -167,8 +168,9 @@ namespace MyNoSqlServer.Domains
                                 break;
                             }
                         }
+
                         break;
-                    
+
                     case ExpectedToken.CloseStringValue:
                         switch (c)
                         {
@@ -177,42 +179,43 @@ namespace MyNoSqlServer.Domains
                                 break;
                             case DoubleQuote:
                                 yield return (
-                                    new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
-                                    new ByteArraySpan(byteArray, valueStartIndex, i+1));
+                                    new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
+                                    new ArraySpan<byte>(byteArray, valueStartIndex, i + 1));
                                 expectedToken = ExpectedToken.Comma;
                                 break;
                         }
 
                         break;
-                    
+
                     case ExpectedToken.CloseNumberOrBoolValue:
                         if (c == Comma || c == CloseBracket || c.IsSpace())
                         {
                             yield return (
-                                new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
-                                new ByteArraySpan(byteArray, valueStartIndex, i));
+                                new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
+                                new ArraySpan<byte>(byteArray, valueStartIndex, i));
                             if (c == CloseBracket)
                                 expectedToken = ExpectedToken.EndOfFile;
                             else
-                            expectedToken = c == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
+                                expectedToken = c == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
                         }
+
                         break;
-                    
+
                     case ExpectedToken.Comma:
                         if (c.IsSpace())
-                        continue;
+                            continue;
                         if (c == CloseBracket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             continue;
                         }
-                        
+
                         if (c != Comma)
                             byteArray.ThrowException(i);
-                       
-                            expectedToken = ExpectedToken.OpenKey;
+
+                        expectedToken = ExpectedToken.OpenKey;
                         continue;
-                    
+
                     case ExpectedToken.CloseObject:
                         if (subObjectString)
                         {
@@ -238,8 +241,8 @@ namespace MyNoSqlServer.Domains
                                     continue;
                                 case CloseBracket when subObjectLevel == 0:
                                     yield return (
-                                        new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
-                                        new ByteArraySpan(byteArray, valueStartIndex, i + 1));
+                                        new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
+                                        new ArraySpan<byte>(byteArray, valueStartIndex, i + 1));
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseBracket:
@@ -247,9 +250,9 @@ namespace MyNoSqlServer.Domains
                                     break;
                             }
                         }
-                        
+
                         break;
-                    
+
                     case ExpectedToken.CloseArray:
                         if (subObjectString)
                         {
@@ -275,8 +278,8 @@ namespace MyNoSqlServer.Domains
                                     continue;
                                 case CloseArray when subObjectLevel == 0:
                                     yield return (
-                                        new ByteArraySpan(byteArray, keyStartIndex, keyEndIndex), 
-                                        new ByteArraySpan(byteArray, valueStartIndex, i + 1));
+                                        new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
+                                        new ArraySpan<byte>(byteArray, valueStartIndex, i + 1));
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseArray:
@@ -284,19 +287,20 @@ namespace MyNoSqlServer.Domains
                                     break;
                             }
                         }
-                        break;                    
-                        
+
+                        break;
+
                 }
-       
+
             }
-            
+
             if (expectedToken != ExpectedToken.EndOfFile)
                 throw new Exception("Invalid Json");
         }
-        
-        
-        
-        public static IEnumerable<ByteArraySpan> SplitJsonArrayToObjects(this byte[] byteArray)
+
+
+
+        public static IEnumerable<ArraySpan<byte>> SplitJsonArrayToObjects(this byte[] byteArray)
         {
             var objectLevel = 0;
             var startIndex = -1;
@@ -339,7 +343,7 @@ namespace MyNoSqlServer.Domains
                         {
                             objectLevel--;
                             if (objectLevel == 0)
-                                yield return new ByteArraySpan(byteArray, startIndex, i + 1);
+                                yield return new ArraySpan<byte>(byteArray, startIndex, i + 1);
                         }
 
                         break;

@@ -10,7 +10,7 @@ namespace Common
     public class ChunkedStream : Stream
     {
 
-        private readonly List<ByteArraySpan> _streamData = new List<ByteArraySpan>();
+        private readonly List<ArraySpan<byte>> _streamData = new List<ArraySpan<byte>>();
         
         public override void Flush()
         {
@@ -85,10 +85,10 @@ namespace Common
             _length += count;
         }
         
-        public void Write(ByteArraySpan byteArraySpan)
+        public void Write(ArraySpan<byte> arraySpan)
         {
-            _streamData.Add(byteArraySpan);
-            _length += byteArraySpan.Length;
+            _streamData.Add(arraySpan);
+            _length += arraySpan.Length;
         }
 
         public override bool CanRead => true;

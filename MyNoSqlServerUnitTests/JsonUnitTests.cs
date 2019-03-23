@@ -25,7 +25,7 @@ namespace MyNoSqlServerUnitTests
 
             var byteArray = Encoding.UTF8.GetBytes(example);
 
-            var result = new List<(ByteArraySpan key, ByteArraySpan value)>();
+            var result = new List<(ArraySpan<byte> key, ArraySpan<byte> value)>();
 
             foreach (var kvp in byteArray.ParseFirstLevelOfJson())
             {

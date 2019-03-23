@@ -30,7 +30,7 @@ namespace MyNoSqlServer.Domains.Db
         }
 
         private const string FieldToYield = "\"Timestamp\"";
-        private static bool IsTimeStampField(this ByteArraySpan span)
+        private static bool IsTimeStampField(this ArraySpan<byte> span)
         {
 
             if (span.Length != FieldToYield.Length)
@@ -49,16 +49,16 @@ namespace MyNoSqlServer.Domains.Db
 
         }
         
-        private static readonly ByteArraySpan OpenArray = new[] {JsonByteArrayReader.OpenArray}.ToByteArraySpan();
-        private static readonly ByteArraySpan CloseArray = new[] {JsonByteArrayReader.CloseArray}.ToByteArraySpan();
+        private static readonly ArraySpan<byte> OpenArray = new[] {JsonByteArrayReader.OpenArray}.ToByteArraySpan();
+        private static readonly ArraySpan<byte> CloseArray = new[] {JsonByteArrayReader.CloseArray}.ToByteArraySpan();
         
-        private static readonly ByteArraySpan OpenBracket = new[] {JsonByteArrayReader.OpenBracket}.ToByteArraySpan();
-        private static readonly ByteArraySpan CloseBracket = new[] {JsonByteArrayReader.CloseBracket}.ToByteArraySpan();
+        private static readonly ArraySpan<byte> OpenBracket = new[] {JsonByteArrayReader.OpenBracket}.ToByteArraySpan();
+        private static readonly ArraySpan<byte> CloseBracket = new[] {JsonByteArrayReader.CloseBracket}.ToByteArraySpan();
         
-        private static readonly ByteArraySpan DoubleColumn = new[] {JsonByteArrayReader.DoubleColumn}.ToByteArraySpan();
-        private static readonly ByteArraySpan Comma = new[] {JsonByteArrayReader.Comma}.ToByteArraySpan();
+        private static readonly ArraySpan<byte> DoubleColumn = new[] {JsonByteArrayReader.DoubleColumn}.ToByteArraySpan();
+        private static readonly ArraySpan<byte> Comma = new[] {JsonByteArrayReader.Comma}.ToByteArraySpan();
 
-        private static readonly ByteArraySpan TimestampFieldAndDoubleColumn = Encoding.UTF8.GetBytes(FieldToYield+":").ToByteArraySpan();
+        private static readonly ArraySpan<byte> TimestampFieldAndDoubleColumn = Encoding.UTF8.GetBytes(FieldToYield+":").ToByteArraySpan();
         public static ChunkedStream InjectTimeStamp(this byte[] data, string timeStamp, Dictionary<string, string> keyValue = null)
         {
             

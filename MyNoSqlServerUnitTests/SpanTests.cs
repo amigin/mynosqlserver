@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MyNoSqlServerUnitTests
 {
-    public class ArraySpanTests
+    public class SpanTests
     {
 
         [Fact]

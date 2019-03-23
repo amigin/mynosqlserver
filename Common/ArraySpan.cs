@@ -1,13 +1,15 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Common
 {
-    public struct ByteArraySpan : IEnumerable<byte>
+    public struct ArraySpan<T> : IEnumerable<T>
     {
-        public ByteArraySpan(byte[] array, int startIndex, int endIndex)
+        public ArraySpan(T[] array, int startIndex, int endIndex)
         {
             _array = array;
             StartIndex = startIndex;
@@ -19,23 +21,21 @@ namespace Common
 
         public int Length => EndIndex - StartIndex;
 
-        private readonly byte[] _array;
+        private readonly T[] _array;
 
-        public byte[] AsArray()
+        public T[] AsArray()
         {
-            var result = new byte[Length];            
+            var result = new T[Length];            
             Array.Copy(_array, StartIndex, result, 0, Length);
             return result;
         }
-
         
-        
-        public void CopyToArray(int srcOffset,  byte[] destArray, int destOffset, int destLength)
+        public void CopyToArray(int srcOffset,  T[] destArray, int destOffset, int destLength)
         {
             Array.Copy(_array, srcOffset+StartIndex, destArray, destOffset, destLength);
         }
 
-        public IEnumerator<byte> GetEnumerator()
+        public IEnumerator<T> GetEnumerator()
         {
             for (var i = StartIndex; i < EndIndex; i++)
                 yield return _array[i];
@@ -52,30 +52,40 @@ namespace Common
         }
 
 
-        public static ByteArraySpan CreateWithLength(byte[] buffer, int startIndex, int length)
+        public static ArraySpan<T> CreateWithLength(T[] buffer, int startIndex, int length)
         {
-            return new ByteArraySpan(buffer, startIndex, startIndex+length);
+            return new ArraySpan<T>(buffer, startIndex, startIndex+length);
         }
 
     }
     
     public static class ArraySpanHelpers
     {
-        public static string AsString(this ByteArraySpan arraySpan)
+        public static string AsString<T>(this ArraySpan<T> arraySpan)
         {
-            return Encoding.UTF8.GetString(arraySpan.AsArray());
+            
+            if (typeof(T) == typeof(byte))
+              return Encoding.UTF8.GetString(arraySpan.AsArray().Cast<byte>().ToArray());
+            
+            if (typeof(T) == typeof(char))
+                return  new string(arraySpan.AsArray().Cast<char>().ToArray());
+
+
+            return "Length: " + arraySpan.Length;
+
         }
 
 
-        public static ByteArraySpan ToByteArraySpan(this byte[] theArray, int startPosition, int length)
+        public static ArraySpan<T> ToByteArraySpan<T>(this T[] theArray, int startPosition, int length)
         {
-            return ByteArraySpan.CreateWithLength(theArray, startPosition, length);
+            return ArraySpan<T>.CreateWithLength(theArray, startPosition, length);
         }
 
-        public static ByteArraySpan ToByteArraySpan(this byte[] theArray)
+        public static ArraySpan<T> ToByteArraySpan<T>(this T[] theArray)
         {
-            return ByteArraySpan.CreateWithLength(theArray, 0, theArray.Length);
+            return ArraySpan<T>.CreateWithLength(theArray, 0, theArray.Length);
         }
+
 
         public static string RemoveDoubleQuotes(this string str)
         {
