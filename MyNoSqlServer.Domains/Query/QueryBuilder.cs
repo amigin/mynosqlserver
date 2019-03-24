@@ -1,19 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Common;
 
 namespace MyNoSqlServer.Domains.Query
 {
 
     public enum QueryOperation
     {
-        Eq, Gt, Lt, Ge, Le, Ne
+        Eq, Gt, Lt, Ge, Le, Ne, In, Bw
     }
 
     public class QueryCondition
     {
         public string FieldName { get; set; }
         public QueryOperation Operation { get; set; }
-        public string Value { get; set; }
+        public string[] Values { get; set; }
     }
 
     public static class QueryBuilder
@@ -24,116 +26,189 @@ namespace MyNoSqlServer.Domains.Query
         {
             op = op.ToLower();
 
-            if (op == "eq")
-                return QueryOperation.Eq;
-            
-            if (op == "gt")
-                return QueryOperation.Gt;
-            
-            if (op == "lt")
-                return QueryOperation.Lt;
-            
-            if (op == "ge")
-                return QueryOperation.Ge;
-
-            if (op == "le")
-                return QueryOperation.Le;
-            
-            if (op == "ne")
-                return QueryOperation.Ne;
-            
-            throw new Exception("Invalid query Operation");
-            
-        }
-
-
-        private static int FindNext(this string query, int startFrom, Func<char, bool> condition)
-        {
-            for (var i = startFrom; i < query.Length; i++)
+            switch (op)
             {
-                if (condition(query[i]))
-                    return i;
-            }
+                case "eq":
+                case "==":
+                case "=":
+                    return QueryOperation.Eq;
 
-            return -1;
-        }
-
-
-        private const char StringChar = '\'';
-
-        private static string ReadValue(this string query, int position)
-        {
-             position = query.FindNext(position, c => c > ' ');
-            if (position == -1)
-                throw new Exception("Invalid query: "+query);
-
-
-            var isString = query[position] == StringChar; 
-
+                case "gt":
+                case ">":
+                    return QueryOperation.Gt;
                 
-            var endPosition = query.FindNext(position+1, c =>
-            {
-                if (isString)
-                    return c == StringChar;
-
-                return c <= ' ';
-            });
-            
-            if (endPosition == -1)
-                endPosition = query.Length;
-
-            if (isString)
-                endPosition++;
-
-            var result = query.Substring(position, endPosition-position);
-
-            return result;
+                case "lt":
+                case "<":
+                    return QueryOperation.Lt;
+                
+                case "ge":
+                case ">=":
+                    return QueryOperation.Ge;
+                
+                case "le":
+                case "<=":
+                    return QueryOperation.Le;
+                
+                case "ne":
+                case "!=":
+                case "<>":
+                    return QueryOperation.Ne;
+                
+                case "in":
+                    return QueryOperation.In;
+                
+                case "between":
+                    return QueryOperation.Bw;
+                default:
+                    throw new Exception("Invalid query Operation");
+            }
         }
 
+        private const string EscapeSequence = "''";
+        private const char CharToEscape = '\'';
+        private const string StringToEscape = "'";
+
+        private static void MoveToTheNextStartOfString(this StringSpan stringSpan)
+        {
+            stringSpan.MoveStartPosition(EscapeSequence, c => c > ' ');
+        }
+
+        private static QueryOperation ReadOperation(this StringSpan src)
+        {
+            var opString = src.ReadNextString();
+            return opString.ParseQueryOperation();
+        }
+
+        private static string ReadNextString(this StringSpan stringSpan)
+        {
+            stringSpan.MoveToTheNextStartOfString();
+
+            var isString = stringSpan.CurrentChar == CharToEscape;
+
+            if (isString){
+                stringSpan.MoveEndPosition(EscapeSequence, c => c == CharToEscape, 1);
+                stringSpan.MoveEndPosition(1);
+                return stringSpan.GetCurrentValue(EscapeSequence, StringToEscape);
+            }
+            
+            stringSpan.MoveEndPosition(EscapeSequence, c => c <= ' ');
+            return stringSpan.GetCurrentValue();
+        }
         
-        
+        private static string ReadNextStringFromArray(this StringSpan stringSpan)
+        {
+            stringSpan.MoveToTheNextStartOfString();
+
+            var isString = stringSpan.CurrentChar == CharToEscape;
+
+            if (isString){
+                stringSpan.MoveEndPosition(EscapeSequence, c => c == CharToEscape, 1);
+                stringSpan.MoveEndPosition(1);
+                return stringSpan.GetCurrentValue(EscapeSequence, StringToEscape);
+            }
+            
+            stringSpan.MoveEndPosition(EscapeSequence, c => c <= ' ' || c == ',' || c==']');
+            return stringSpan.GetCurrentValue();
+        }
+
+        private static IEnumerable<string> ReadInValues(this StringSpan stringSpan)
+        {
+            
+            stringSpan.MoveToTheNextStartOfString();
+
+            var arrayIsOpened = stringSpan.CurrentChar == '[';
+            
+            if (!arrayIsOpened)
+                throw new Exception("Invalid int operation at position: "+stringSpan.PositionStart);
+
+            stringSpan.MoveStartPosition(1);
+            stringSpan.SyncEndWithStart();
+            
+            while (!stringSpan.Eof)
+            {
+                var value = stringSpan.ReadNextStringFromArray();
+                yield return value;
+
+                stringSpan.SyncStartWithEnd();
+
+                if (stringSpan.CurrentChar <= ' ')
+                {
+                    stringSpan.MoveToTheNextStartOfString();
+                    stringSpan.SyncEndWithStart();
+                }
+                
+                if (stringSpan.CurrentChar == ']')
+                {
+                    stringSpan.MoveStartPosition(1);
+                    stringSpan.SyncEndWithStart();
+                    break;
+                }
+                
+                if (stringSpan.CurrentChar != ',')
+                    stringSpan.MoveStartPosition(EscapeSequence, c => c == ',' || c==']');
+
+                stringSpan.MoveStartPosition(1);
+                stringSpan.SyncEndWithStart();
+            }
+            
+            
+
+        }
+
+
 
         public static IEnumerable<QueryCondition> ParseQueryConditions(this string query)
         {
-            var position = 0;
 
-            while (position >= 0)
+            var stringSpan = new StringSpan(query);
+            
+            stringSpan.MoveToTheNextStartOfString();
+
+            while (!stringSpan.Eof)
             {
                
-                position = query.FindNext(position, c => c > ' ');
+                var fieldName = stringSpan.ReadNextString();
                 
-                if (position == -1)
-                    break;
 
-                var fieldName = query.ReadValue(position);
-                position += fieldName.Length;
-                
-                position = query.FindNext(position, c => c > ' ');
+                var operation = stringSpan.ReadOperation();
 
-                var op = query.ReadValue(position);
-                position += op.Length;
-                position = query.FindNext(position, c => c > ' ');
-                
-                var value =  query.ReadValue(position);
-                position += value.Length;
-                
-                yield return new QueryCondition
+
+
+                if (operation == QueryOperation.In)
                 {
-                    FieldName = fieldName,
-                    Value = value,
-                    Operation = op.ParseQueryOperation()
-                };
+                    var value =  stringSpan.ReadInValues();
+                    
+                    yield return new QueryCondition
+                    {
+                        FieldName = fieldName,
+                        Values = value.ToArray(),
+                        Operation = operation
+                    };
+                    
+                }
+                else
+                {
+                    var value =  stringSpan.ReadNextString();
                 
-                if (position >= query.Length)
+                    yield return new QueryCondition
+                    {
+                        FieldName = fieldName,
+                        Values = value.ToSingleArray(),
+                        Operation = operation
+                    };
+                    
+                }
+
+                stringSpan.MoveToTheNextStartOfString();
+                
+                if (stringSpan.Eof)
                     break;
+
+
+                var logicalOperator = stringSpan.ReadNextString();
                 
-                position = query.FindNext(position, c => c > ' ');
-                
-                var separator =  query.ReadValue(position).ToLower();
-                if (separator != "and")
+                if (logicalOperator.ToLower() != "and" )
                     throw new Exception("Only and logical operation is supported for a while");
-                
-                position += separator.Length;
             }
 
         }

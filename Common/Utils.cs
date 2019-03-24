@@ -48,6 +48,11 @@ namespace Common
             return Encoding.UTF8.GetString(bytes);
         }
 
+        public static T[] ToSingleArray<T>(this T value)
+        {
+            return new[] {value};
+        }
+
         
     }
     
