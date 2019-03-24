@@ -1,4 +1,5 @@
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Domains.DataSynchronization
 {

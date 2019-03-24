@@ -32,11 +32,9 @@ namespace MyNoSqlServer.Api.Controllers
 
                 var entity = table.GetEntity(partitionKey, rowKey);
 
-                if (entity == null)
-                    return this.RowNotFound(tableName, partitionKey, rowKey);
-
-
-                return this.ToDbRowResult(entity);
+                return entity == null 
+                    ? this.RowNotFound(tableName, partitionKey, rowKey) 
+                    : this.ToDbRowResult(entity);
             }
 
             // PartitionKey == null and RowKey == null

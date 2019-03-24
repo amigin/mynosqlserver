@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MyNoSqlServerUnitTests
 {
-    public class TestQueryConditions
+    public class TestQueryConditionsParsing
     {
 
         [Fact]

@@ -1,17 +1,19 @@
 using System.Collections.Generic;
 using System.Linq;
+using MyNoSqlServer.Domains.Db.Rows;
+using MyNoSqlServer.Domains.Query;
 
-namespace MyNoSqlServer.Domains.Db
+namespace MyNoSqlServer.Domains.Db.Partitions
 {
     
     /// <summary>
-    /// This Object Uses SlimLock of Table
+    /// DbPartition Uses SlimLock of Table
     /// </summary>
     public class DbPartition
     {
         public string PartitionKey { get; private set; }
         
-        private readonly SortedDictionary<string, DbRow> _rows = new SortedDictionary<string, DbRow>();
+        private readonly SortedList<string, DbRow> _rows = new SortedList<string, DbRow>();
 
         public bool Insert(DbRow row)
         {
@@ -41,12 +43,12 @@ namespace MyNoSqlServer.Domains.Db
             return _rows.ContainsKey(rowKey);
         }
         
-        public DbRow[] GetAllRows()
+        public IReadOnlyList<DbRow> GetAllRows()
         {
-            return _rows.Values.ToArray();
+            return _rows.Values.ToList();
         }
         
-        public DbRow[] GetRowsWithLimit(int? limit, int? skip)
+        public IReadOnlyList<DbRow> GetRowsWithLimit(int? limit, int? skip)
         {
             IEnumerable<DbRow> result = _rows.Values;
 
@@ -57,7 +59,7 @@ namespace MyNoSqlServer.Domains.Db
             if (limit != null)
                 result = result.Take(limit.Value);
             
-            return result.ToArray();
+            return result.ToList();
         }
         
         
@@ -83,6 +85,29 @@ namespace MyNoSqlServer.Domains.Db
         {
             if (!_rows.ContainsKey(entityInfo.RowKey))
                 _rows.Add(entityInfo.RowKey, DbRow.RestoreSnapshot(entityInfo.PartitionKey, entityInfo.RowKey, data));
+        }
+
+
+        public IEnumerable<DbRow> ApplyQuery(IDictionary<string, List<QueryCondition>> conditionsDict)
+        {
+            var rows = conditionsDict.ContainsKey(DbRowDataUtils.RowKeyField)
+                ? _rows.FilterByQueryConditions(conditionsDict[DbRowDataUtils.RowKeyField])
+                : _rows.Values;
+
+            if (conditionsDict.ContainsKey(DbRowDataUtils.RowKeyField))
+                conditionsDict.Remove(DbRowDataUtils.RowKeyField);
+
+            if (conditionsDict.Count == 0)
+            {
+                foreach (var row in rows)
+                    yield return row;
+            }
+            else
+            {
+                foreach (var row in rows)
+                    if (row.MatchesQuery(conditionsDict))
+                        yield return row;
+            }
         }
 
 

@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Api.Controllers
 {
@@ -22,6 +23,12 @@ namespace MyNoSqlServer.Api.Controllers
         {
             return ctx.Conflict("Please specify table name");
         }
+        
+        public static IActionResult QueryIsNull(this Controller ctx)
+        {
+            return ctx.Conflict("Please specify query as body json field");
+        }
+        
         
         public static IActionResult TableNotFound(this Controller ctx, string tableName)
         {

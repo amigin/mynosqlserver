@@ -4,8 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Common;
+using MyNoSqlServer.Domains.Db.Partitions;
+using MyNoSqlServer.Domains.Db.Rows;
+using MyNoSqlServer.Domains.Query;
 
-namespace MyNoSqlServer.Domains.Db
+namespace MyNoSqlServer.Domains.Db.Tables
 {
 
     public class DbTable
@@ -29,7 +32,7 @@ namespace MyNoSqlServer.Domains.Db
         
         internal readonly ReaderWriterLockSlim ReaderWriterLockSlim = new ReaderWriterLockSlim();
         
-        public readonly SortedDictionary<string, DbPartition> Partitions = new SortedDictionary<string, DbPartition>();
+        public readonly SortedList<string, DbPartition> Partitions = new SortedList<string, DbPartition>();
 
 
         public void InitPartitionFromSnapshot(string partitionKey, byte[] data)
@@ -138,7 +141,7 @@ namespace MyNoSqlServer.Domains.Db
         }
         
 
-        public IEnumerable<DbRow> GetAllRecords(int? limit)
+        public IReadOnlyList<DbRow> GetAllRecords(int? limit)
         {
             var result = new List<DbRow>();
             ReaderWriterLockSlim.EnterReadLock();
@@ -272,6 +275,25 @@ namespace MyNoSqlServer.Domains.Db
                 ReaderWriterLockSlim.ExitWriteLock();
                 ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, dbRows);
             }
+        }
+
+
+
+        public IEnumerable<DbRow> ApplyQuery(IEnumerable<QueryCondition> queryConditions)
+        {
+            var conditionsDict = queryConditions.GroupBy(itm => itm.FieldName).ToDictionary(itm => itm.Key, itm => itm.ToList());
+
+            var partitions = conditionsDict.ContainsKey(DbRowDataUtils.PartitionKeyField)
+                ? Partitions.FilterByQueryConditions(conditionsDict[DbRowDataUtils.PartitionKeyField]).ToList()
+                : Partitions.Values.ToList();
+
+            if (conditionsDict.ContainsKey(DbRowDataUtils.PartitionKeyField))
+                conditionsDict.Remove(DbRowDataUtils.PartitionKeyField);
+                
+            foreach (var partition in partitions)
+                foreach (var dbRow in partition.ApplyQuery(conditionsDict))
+                    yield return dbRow;
+            
         }
         
     }

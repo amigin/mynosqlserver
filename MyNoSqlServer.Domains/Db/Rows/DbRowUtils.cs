@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using Common;
 
-namespace MyNoSqlServer.Domains.Db
+namespace MyNoSqlServer.Domains.Db.Rows
 {
     
     public static class DbRowUtils

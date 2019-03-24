@@ -5,6 +5,7 @@ using System.IO.Pipes;
 using System.Text;
 using Common;
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Domains.DataSynchronization
 {

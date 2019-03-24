@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Partitions;
+using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Domains.SnapshotSaver
 {

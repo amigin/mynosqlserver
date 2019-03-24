@@ -54,6 +54,47 @@ namespace Common
         }
 
         
+        public static bool RangeBetweenIncludingBoth(this string value, string keyFrom, string keyTo)
+        {
+            return string.CompareOrdinal(value, keyFrom) >= 0 && string.CompareOrdinal(value, keyTo) <= 0;
+        }
+        
+        public static bool RangeBetweenExcludingBoth(this string value, string keyFrom, string keyTo)
+        {
+            return string.CompareOrdinal(value, keyFrom) > 0 && string.CompareOrdinal(value, keyTo) < 0;
+        }
+        
+        public static bool RangeBetweenIncludingLower(this string value, string keyFrom, string keyTo)
+        {
+            return string.CompareOrdinal(value, keyFrom) >= 0 && string.CompareOrdinal(value, keyTo) < 0;
+        }
+        
+        public static bool RangeBetweenIncludingHigher(this string value, string keyFrom, string keyTo)
+        {
+            return string.CompareOrdinal(value, keyFrom) > 0 && string.CompareOrdinal(value, keyTo) <= 0;
+        }
+
+
+        public static bool GreaterThen(this string greaterThen, string thisOne)
+        {
+            return string.CompareOrdinal(greaterThen, thisOne) > 0;
+        }
+        
+        public static bool GreaterOrEqualThen(this string greaterAndEqualThen, string thisOne)
+        {
+            return string.CompareOrdinal(greaterAndEqualThen, thisOne) >= 0;
+        }
+        
+        public static bool LowerThen(this string lowerThen, string thisOne)
+        {
+            return string.CompareOrdinal(lowerThen, thisOne) < 0;
+        }
+        
+        public static bool LowerOrEqualThen(this string lowerAndEqualThen, string thisOne)
+        {
+            return string.CompareOrdinal(lowerAndEqualThen, thisOne) <= 0;
+        }
+        
     }
     
 }

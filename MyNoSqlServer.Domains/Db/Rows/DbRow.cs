@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using MyNoSqlServer.Domains.Query;
 
-namespace MyNoSqlServer.Domains.Db
+namespace MyNoSqlServer.Domains.Db.Rows
 {
     public class DbRow
     {
@@ -55,6 +56,12 @@ namespace MyNoSqlServer.Domains.Db
                 timeStamp,
                 data);
         }
+
+        public bool MatchesQuery(IDictionary<string, List<QueryCondition>> conditionsDict)
+        {
+            throw new NotImplementedException("Temporary disabled the ability to filter within Fields of DbRow");
+        }
+
 
     }
 

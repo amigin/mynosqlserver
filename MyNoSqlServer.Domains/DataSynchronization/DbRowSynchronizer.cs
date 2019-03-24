@@ -8,6 +8,7 @@ using System.Threading.Tasks.Dataflow;
 using Flurl;
 using Flurl.Http;
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Domains.DataSynchronization
 {
