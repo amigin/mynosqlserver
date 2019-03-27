@@ -93,9 +93,9 @@ namespace MyNoSqlServer.Domains.Db.Tables
             return (null, null);
         }
         
-        public void InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)
+        public (DbPartition partition, DbRow dbRow) InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
-            var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+           
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
@@ -103,17 +103,17 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
                 var partition = Partitions[entityInfo.PartitionKey];
-
+                
+                var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
                 partition.InsertOrReplace(dbRow);
                 
-                ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition);                
-
+                return (partition, dbRow);
             }
             finally
             {
                 ReaderWriterLockSlim.ExitWriteLock();
-                ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, new[]{dbRow});
             }
+
         }    
 
         public DbRow GetEntity(string partitionKey, string rowKey)
@@ -188,24 +188,25 @@ namespace MyNoSqlServer.Domains.Db.Tables
             }
         }
 
-        public bool DeleteRow(string partitionKey, string rowKey)
+        public DbPartition DeleteRow(string partitionKey, string rowKey)
         {
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
                 if (!Partitions.ContainsKey(partitionKey))
-                    return false;
+                    return null;
 
                 var partition = Partitions[partitionKey];
-
-                ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition);  
                 
-                return partition.DeleteRow(rowKey);
+                if (partition.DeleteRow(rowKey))
+                  return partition;
             }
             finally
             {
                 ReaderWriterLockSlim.ExitWriteLock();
             }
+
+            return null;
         }
         
         internal void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
@@ -239,7 +240,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
-        public void BulkInsertOrReplace(IEnumerable<ArraySpan<byte>> itemsAsArray)
+        public (IEnumerable<DbPartition> partitions, IReadOnlyList<DbRow> rows) BulkInsertOrReplace(IEnumerable<ArraySpan<byte>> itemsAsArray)
         {
 
             var dbRows = itemsAsArray
@@ -247,6 +248,11 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     .AsArray()
                     .ToDbRow())
                 .ToArray();
+            
+            
+            var partitionsToSync = new Dictionary<string, DbPartition>();
+            
+            var rowsToSync = new List<DbRow>();
             
             ReaderWriterLockSlim.EnterWriteLock();
             try
@@ -260,16 +266,21 @@ namespace MyNoSqlServer.Domains.Db.Tables
 
                     partition.InsertOrReplace(dbRow);
                     
-                    ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition); 
-
+                    if (!partitionsToSync.ContainsKey(partition.PartitionKey))
+                        partitionsToSync.Add(partition.PartitionKey, partition);
+                    
+                    rowsToSync.Add(dbRow);
                 }
+                
             }
             finally
             {
-                               
                 ReaderWriterLockSlim.ExitWriteLock();
-                ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, dbRows);
+           
             }
+
+
+            return (partitionsToSync.Values, rowsToSync);
         }
 
 

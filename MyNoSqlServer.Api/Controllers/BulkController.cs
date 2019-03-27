@@ -19,9 +19,14 @@ namespace MyNoSqlServer.Api.Controllers
             
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
-            var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToArray();
+            var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
 
-            table.BulkInsertOrReplace(entitiesToInsert);
+            var (dbPartitions, dbRows) = table.BulkInsertOrReplace(entitiesToInsert);
+
+            foreach (var dbPartition in dbPartitions)
+                ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+
+            ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(tableName, dbRows);
             
             return this.ResponseOk();
 

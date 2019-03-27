@@ -93,7 +93,10 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.RowKeyIsNull();
             
             var data = Request.BodyAsByteArray();
-            table.InsertOrReplace(body, data);
+            var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
+            
+            ServiceLocator.SnapshotSaverEngine.Synchronize(table.Name, dbPartition);
+            ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(table.Name, new[]{dbRow});
 
             return this.ResponseOk();
         }
@@ -117,12 +120,14 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.TableNotFound(tableName);
 
 
-            var result = table.DeleteRow(partitionKey, rowKey);
+            var dbPartition = table.DeleteRow(partitionKey, rowKey);
 
-            if (result)
-                return this.ResponseOk();
+            if (dbPartition == null) 
+                return this.RowNotFound(tableName, partitionKey, rowKey);
+            
+            ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);  
+            return this.ResponseOk();
 
-            return this.RowNotFound(tableName, partitionKey, rowKey);
         }
 
     }

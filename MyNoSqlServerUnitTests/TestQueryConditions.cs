@@ -1,6 +1,4 @@
-using System.Data;
 using System.Linq;
-using System.Text;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db.Tables;
 using MyNoSqlServer.Domains.Query;
@@ -16,9 +14,6 @@ namespace MyNoSqlServerUnitTests
     
     public class TestQueryConditions
     {
-        
-
-
 
         [Fact]
         public void TestSimpleQuery()

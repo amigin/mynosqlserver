@@ -51,12 +51,12 @@ namespace MyNoSqlServer.Domains.DataSynchronization
     public static class DbRowSynchronizationModel
     {
 
-        private static IEnumerable<byte> GenerateSynchronizationModel(string tableName, DbRow[] dbRows)
+        private static IEnumerable<byte> GenerateSynchronizationModel(string tableName, IReadOnlyList<DbRow> dbRows)
         {
             throw new NotImplementedException();
         }
 
-        public static Stream CreateSynchronizationModel(string tableName, DbRow[] dbRows)
+        public static Stream CreateSynchronizationModel(string tableName, IReadOnlyList<DbRow> dbRows)
         {
             throw new NotImplementedException();
             /*
