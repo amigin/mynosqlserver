@@ -15,7 +15,18 @@ namespace MyNoSqlServer.Domains.Query
     {
         public string FieldName { get; set; }
         public QueryOperation Operation { get; set; }
-        public string[] Values { get; set; }
+        internal string[] Values { get; set; }
+
+
+        public string AsString(int indexOf)
+        {
+            var result = Values[indexOf];
+
+            if (result[0] == '\'' && result[result.Length - 1] == '\'')
+                return result.Substring(1, result.Length - 2);
+
+            return result;
+        }
     }
 
     public static class QueryBuilder

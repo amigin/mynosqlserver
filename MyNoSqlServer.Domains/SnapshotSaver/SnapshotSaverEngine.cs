@@ -24,8 +24,13 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             };
         }
     }
+
+    public interface ISnapshotSaverEngine
+    {
+        void Synchronize(string tableName, DbPartition partitionToSave);
+    }
     
-    public class SnapshotSaverEngine
+    public class SnapshotSaverEngine : ISnapshotSaverEngine
     {
         
         private readonly QueueToSaveSnapshot _queueToSaveSnapshot = new QueueToSaveSnapshot();

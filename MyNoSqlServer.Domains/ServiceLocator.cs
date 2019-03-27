@@ -7,7 +7,7 @@ namespace MyNoSqlServer.Domains
     {
 
         
-        public static SnapshotSaverEngine SnapshotSaverEngine { get; set; }
+        public static ISnapshotSaverEngine SnapshotSaverEngine { get; set; }
         
         public static class Synchronizer
         {

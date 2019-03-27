@@ -93,43 +93,41 @@ namespace Common
 
 
         
-        public static IEnumerable<TValue> GetRange<TValue>(this SortedList<string, TValue> src, string keyFrom, string keyTo, RangeInclude rangeInclude)
+        public static IEnumerable<KeyValuePair<string,TValue>> GetRange<TValue>(this SortedList<string, TValue> src, string keyFrom, string keyTo, RangeInclude rangeInclude)
         {
 
 
             var rangeIncludeFunc = rangeInclude.GetRangePredicateFunction();
             
             if (string.CompareOrdinal(keyFrom, keyTo) > 0)
-                return Array.Empty<TValue>();
+                return Array.Empty<KeyValuePair<string,TValue>>();
             
             if (src.Count < MinAmountToScan)
-                return src.Where(itm => rangeIncludeFunc(itm.Key, keyFrom,keyTo))
-                    .Select(itm => itm.Value);
+                return src.Where(itm => rangeIncludeFunc(itm.Key, keyFrom,keyTo));
 
 
             var fromIndex = src.FindNearest(keyFrom);
 
             var toIndex = src.FindNearest(keyTo);
 
-            var result = new List<TValue>();
+            var result = new List<KeyValuePair<string,TValue>>();
 
             for (var i = fromIndex; i <= toIndex; i++)
             {
                 if ( rangeIncludeFunc(src.Keys[i], keyFrom, keyTo))
-                    result.Add(src.Values[i]); 
+                    result.Add(new KeyValuePair<string, TValue>(src.Keys[i], src.Values[i])); 
             }
 
             return result;
         }
         
-        public static IEnumerable<TValue> GetGreaterRange<TValue>(this SortedList<string, TValue> src, string keyFrom, bool includeLower)
+        public static IEnumerable<KeyValuePair<string, TValue>> GetGreaterRange<TValue>(this SortedList<string, TValue> src, string keyFrom, bool includeLower)
         {
 
             var comparator = includeLower.GetGreaterComparator();
 
             if (src.Count < MinAmountToScan)
-                return src.Where(itm =>  comparator(itm.Key, keyFrom))
-                    .Select(itm => itm.Value);
+                return src.Where(itm =>  comparator(itm.Key, keyFrom));
 
             var fromIndex = src.FindNearest(keyFrom);
             fromIndex--;
@@ -138,25 +136,24 @@ namespace Common
                 fromIndex = 0;
 
 
-            var result = new List<TValue>();
+            var result = new List<KeyValuePair<string, TValue>>();
 
             for (var i = fromIndex; i < src.Count; i++)
             {
                 if (comparator(src.Keys[i], keyFrom))
-                    result.Add(src.Values[i]);
+                    result.Add(new KeyValuePair<string, TValue>(src.Keys[i], src.Values[i]));
             }
 
             return result;
         }
         
-        public static IEnumerable<TValue> GetLowerRange<TValue>(this SortedList<string, TValue> src, string keyTo, bool includeHigher)
+        public static IEnumerable<KeyValuePair<string, TValue>> GetLowerRange<TValue>(this SortedList<string, TValue> src, string keyTo, bool includeHigher)
         {
 
             var comparator = includeHigher.GetLowerComparator();
             
             if (src.Count < MinAmountToScan)
-                return src.Where(itm =>  comparator(itm.Key, keyTo))
-                    .Select(itm => itm.Value);
+                return src.Where(itm =>  comparator(itm.Key, keyTo));
 
             var toIndex = src.FindNearest(keyTo);
 
@@ -164,12 +161,12 @@ namespace Common
                 toIndex++;
 
 
-            var result = new List<TValue>();
+            var result = new List<KeyValuePair<string, TValue>>();
 
             for (var i = 0; i < toIndex; i++)
             {
                 if (comparator(src.Keys[i], keyTo))
-                    result.Add(src.Values[i]);
+                    result.Add(new KeyValuePair<string, TValue>(src.Keys[i],src.Values[i]));
             }
 
             return result;

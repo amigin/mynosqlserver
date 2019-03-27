@@ -70,12 +70,8 @@ namespace MyNoSqlServer.Domains.Db.Tables
 
         }
 
-        public bool Insert(IMyNoSqlDbEntity entityInfo, byte[] data)
+        public (DbPartition partition, DbRow dbRow) Insert(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
-            var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
-
-            var response = false;
-            
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
@@ -83,19 +79,18 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
                 var partition = Partitions[entityInfo.PartitionKey];
-
-                response = partition.Insert(dbRow);
                 
-                ServiceLocator.SnapshotSaverEngine.Synchronize(Name, partition);                
+                var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+                
+                if (partition.Insert(dbRow))
+                    return (partition, dbRow);
             }
             finally
             {
                 ReaderWriterLockSlim.ExitWriteLock();
-                if (response)
-                    ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(Name, new[]{dbRow});
             }
 
-            return response;
+            return (null, null);
         }
         
         public void InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)

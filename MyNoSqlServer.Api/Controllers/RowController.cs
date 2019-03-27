@@ -66,9 +66,16 @@ namespace MyNoSqlServer.Api.Controllers
                 this.ResponseConflict("Record with the same PartitionKey and RowKey is already exists");
 
             var data = Request.BodyAsByteArray();
-            var result = table.Insert(body, data);
+            
+            var (dbPartition, dbRow) = table.Insert(body, data);
 
-            return result ? this.ResponseOk() : this.ResponseConflict("Can not insert entity");
+            if (dbPartition != null)
+            {
+                ServiceLocator.SnapshotSaverEngine.Synchronize(table.Name, dbPartition);
+                ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(table.Name, new[]{dbRow});
+            }
+
+            return dbPartition != null ? this.ResponseOk() : this.ResponseConflict("Can not insert entity");
         }
         
         [HttpPost("Row/InsertOrReplace")]
