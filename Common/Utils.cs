@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Common
@@ -93,6 +94,18 @@ namespace Common
         public static bool LowerOrEqualThen(this string lowerAndEqualThen, string thisOne)
         {
             return string.CompareOrdinal(lowerAndEqualThen, thisOne) <= 0;
+        }
+
+
+        public static Queue<T> ToQueue<T>(this IEnumerable<T> src)
+        {
+            var result = new Queue<T>();
+            foreach (var itm in src)
+            {
+                result.Enqueue(itm);
+            }
+
+            return result;
         }
         
     }
