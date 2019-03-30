@@ -119,7 +119,6 @@ namespace MyNoSqlServer.Api.Controllers
             if (table == null)
                 return this.TableNotFound(tableName);
 
-
             var dbPartition = table.DeleteRow(partitionKey, rowKey);
 
             if (dbPartition == null) 
@@ -128,6 +127,30 @@ namespace MyNoSqlServer.Api.Controllers
             ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);  
             return this.ResponseOk();
 
+        }
+
+        
+        [HttpDelete("CleanAndKeepLastRecords")]
+        public IActionResult CleanAndKeepLastRecords([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey, [Required][FromQuery] int amount)
+        {
+            if (string.IsNullOrEmpty(tableName))
+                return this.TableNameIsNull();
+
+            if (string.IsNullOrEmpty(partitionKey))
+                return this.PartitionKeyIsNull();
+            
+            var table = DbInstance.GetTable(tableName);
+
+            if (table == null)
+                return this.TableNotFound(tableName);
+
+
+            var dbPartition = table.CleanAndKeepLastRecords(partitionKey, amount);
+            
+            if (dbPartition != null)
+              ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+            
+            return this.ResponseOk();
         }
 
     }

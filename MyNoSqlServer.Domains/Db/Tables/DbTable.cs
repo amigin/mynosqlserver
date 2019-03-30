@@ -209,6 +209,26 @@ namespace MyNoSqlServer.Domains.Db.Tables
             return null;
         }
         
+        public DbPartition CleanAndKeepLastRecords(string partitionKey, int amount)
+        {
+            ReaderWriterLockSlim.EnterWriteLock();
+            try
+            {
+                if (!Partitions.ContainsKey(partitionKey))
+                    return null;
+
+                var partition = Partitions[partitionKey];
+
+                partition.CleanAndKeepLastRecords(amount);
+                
+                return partition;
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
+        }
+        
         internal void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
             if (!Partitions.ContainsKey(entityInfo.PartitionKey))

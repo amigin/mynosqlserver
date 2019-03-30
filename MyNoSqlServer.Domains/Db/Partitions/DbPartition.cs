@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Common;
 using MyNoSqlServer.Domains.Db.Rows;
 using MyNoSqlServer.Domains.Query;
 
@@ -115,5 +117,20 @@ namespace MyNoSqlServer.Domains.Db.Partitions
         {
             return PartitionKey+"; Count: "+_rows.Count;
         }
+
+        public void CleanAndKeepLastRecords(int amount)
+        {
+            if (amount<0)
+                throw new Exception("Amount must be greater than zero");
+            
+            var rowsByLastInsertDateTime = _rows.OrderBy(itm => itm.Value.Timestamp).ToQueue();
+            
+            while (_rows.Count>amount)
+            {
+                var item = rowsByLastInsertDateTime.Dequeue();
+                _rows.Remove(item.Key);
+            }
+        }
+        
     }
 }
