@@ -37,7 +37,7 @@ namespace MyNoSqlServer.AzureStorage
 
                 partitionSnapshot =>
                 {
-                    Console.WriteLine($"Save snapshot {partitionSnapshot.TableName}/{partitionSnapshot.PartitionKey}. Data Length: {partitionSnapshot.Snapshot.Length}");
+                    Console.WriteLine($"{DateTime.UtcNow:s} Save snapshot {partitionSnapshot.TableName}/{partitionSnapshot.PartitionKey}. Data Length: {partitionSnapshot.Snapshot.Length}");
                     var blobName = GenerateBlobName(partitionSnapshot.TableName, partitionSnapshot.PartitionKey);
                     return storageBlob.SaveToBlobAsync(containerName, blobName, partitionSnapshot.Snapshot);
                 },
