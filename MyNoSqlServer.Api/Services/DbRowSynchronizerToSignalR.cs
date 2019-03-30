@@ -11,6 +11,11 @@ namespace MyNoSqlServer.Api.Services
         {
             ChangesHub.BroadcastChange(tableName, dbRow);
         }
+
+        public void SynchronizeDelete(string tableName, IReadOnlyList<DbRow> dbRows)
+        {
+            ChangesHub.BroadcastDelete(tableName, dbRows);
+        }
     }
     
 }

@@ -188,40 +188,42 @@ namespace MyNoSqlServer.Domains.Db.Tables
             }
         }
 
-        public DbPartition DeleteRow(string partitionKey, string rowKey)
+        public (DbPartition dbPartition, DbRow dbRow) DeleteRow(string partitionKey, string rowKey)
         {
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
                 if (!Partitions.ContainsKey(partitionKey))
-                    return null;
+                    return (null, null);
 
                 var partition = Partitions[partitionKey];
+
+                var row = partition.DeleteRow(rowKey);
                 
-                if (partition.DeleteRow(rowKey))
-                  return partition;
+                if (row != null)
+                  return (partition, row);
             }
             finally
             {
                 ReaderWriterLockSlim.ExitWriteLock();
             }
 
-            return null;
+            return (null, null);
         }
         
-        public DbPartition CleanAndKeepLastRecords(string partitionKey, int amount)
+        public (DbPartition dbPartition, IReadOnlyList<DbRow> dbRows) CleanAndKeepLastRecords(string partitionKey, int amount)
         {
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
                 if (!Partitions.ContainsKey(partitionKey))
-                    return null;
+                    return (null,null);
 
                 var partition = Partitions[partitionKey];
 
-                partition.CleanAndKeepLastRecords(amount);
+                var dbRows = partition.CleanAndKeepLastRecords(amount);
                 
-                return partition;
+                return (partition, dbRows);
             }
             finally
             {

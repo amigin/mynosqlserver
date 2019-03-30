@@ -74,13 +74,14 @@ namespace MyNoSqlServer.Domains.Db.Partitions
             };
         }
 
-        public bool DeleteRow(string rowKey)
+        public DbRow DeleteRow(string rowKey)
         {
             if (!_rows.ContainsKey(rowKey))
-                return false;
+                return null;
 
+            var result = _rows[rowKey];
             _rows.Remove(rowKey);
-            return true;
+            return result;
         }
 
         public void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
@@ -118,18 +119,23 @@ namespace MyNoSqlServer.Domains.Db.Partitions
             return PartitionKey+"; Count: "+_rows.Count;
         }
 
-        public void CleanAndKeepLastRecords(int amount)
+        public IReadOnlyList<DbRow> CleanAndKeepLastRecords(int amount)
         {
             if (amount<0)
                 throw new Exception("Amount must be greater than zero");
             
             var rowsByLastInsertDateTime = _rows.OrderBy(itm => itm.Value.Timestamp).ToQueue();
             
+            var result = new List<DbRow>();
+            
             while (_rows.Count>amount)
             {
                 var item = rowsByLastInsertDateTime.Dequeue();
+                result.Add(item.Value);
                 _rows.Remove(item.Key);
             }
+
+            return result;
         }
         
     }

@@ -119,12 +119,14 @@ namespace MyNoSqlServer.Api.Controllers
             if (table == null)
                 return this.TableNotFound(tableName);
 
-            var dbPartition = table.DeleteRow(partitionKey, rowKey);
+            var (dbPartition, dbRow) = table.DeleteRow(partitionKey, rowKey);
 
             if (dbPartition == null) 
                 return this.RowNotFound(tableName, partitionKey, rowKey);
             
-            ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);  
+            ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+            ServiceLocator.Synchronizer.DbRowSynchronizer.SynchronizeDelete(tableName, new[]{dbRow});
+            
             return this.ResponseOk();
 
         }
@@ -145,10 +147,13 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.TableNotFound(tableName);
 
 
-            var dbPartition = table.CleanAndKeepLastRecords(partitionKey, amount);
-            
+            var (dbPartition, dbRows) = table.CleanAndKeepLastRecords(partitionKey, amount);
+
             if (dbPartition != null)
-              ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+            {
+                ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+                ServiceLocator.Synchronizer.DbRowSynchronizer.SynchronizeDelete(tableName, dbRows);
+            }
             
             return this.ResponseOk();
         }

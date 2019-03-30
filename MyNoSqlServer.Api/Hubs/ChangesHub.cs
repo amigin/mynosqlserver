@@ -53,11 +53,6 @@ namespace MyNoSqlServer.Api.Hubs
             return base.OnDisconnectedAsync(exception);
         }
 
-        private static byte[] PreparePacketToBroadcast(IReadOnlyList<DbRow> entities)
-        {
-            return entities.ToJsonArray().AsArray();
-        }
-        
         
         
         public static void BroadcastChange(string tableName, IReadOnlyList<DbRow> entities)
@@ -69,9 +64,25 @@ namespace MyNoSqlServer.Api.Hubs
             foreach (var clientProxy in clientsToSend)
             {
                 if (packetToBroadcast == null)
-                    packetToBroadcast = PreparePacketToBroadcast(entities);
+                    packetToBroadcast = entities.ToHubUpdateContract();
                 
-                clientProxy.SendAsync(tableName, packetToBroadcast);
+                clientProxy.SendAsync("u:"+tableName, packetToBroadcast);
+            }
+            
+        }
+        
+        public static void BroadcastDelete(string tableName, IReadOnlyList<DbRow> dbRows)
+        {
+            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
+            
+            byte[] packetToBroadcast = null;
+            
+            foreach (var clientProxy in clientsToSend)
+            {
+                if (packetToBroadcast == null)
+                  packetToBroadcast = dbRows.ToHubDeleteContract();
+                
+                clientProxy.SendAsync("d:"+tableName,tableName, packetToBroadcast);
             }
             
         }
@@ -90,7 +101,7 @@ namespace MyNoSqlServer.Api.Hubs
 
             var rows = table.GetAllRecords(null);
 
-            var dataToSend = PreparePacketToBroadcast(rows);
+            var dataToSend = rows.ToHubUpdateContract();
 
             await Clients.Caller.SendCoreAsync(tableName, new object[]{dataToSend});
         }
