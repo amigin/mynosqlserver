@@ -8,7 +8,7 @@ using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Api.Hubs
 {
-    
+
     public class ChangesConnection : IConnection
     {
         public IClientProxy Client { get; }
@@ -24,7 +24,7 @@ namespace MyNoSqlServer.Api.Hubs
                     _subscribes.Add(tableName, tableName);
             }
         }
-        
+
         public bool SubscribedToTable(string tableChangeSubscribed)
         {
             lock (_subscribes)
@@ -36,11 +36,11 @@ namespace MyNoSqlServer.Api.Hubs
             Id = id;
         }
     }
-    
+
     public class ChangesHub : Hub
     {
         private static readonly ConnectionsManager<ChangesConnection> Connections = new ConnectionsManager<ChangesConnection>();
-        
+
         public override Task OnConnectedAsync()
         {
             Connections.Add(Context.ConnectionId, new ChangesConnection(Context.ConnectionId, Clients.Caller));
@@ -53,8 +53,8 @@ namespace MyNoSqlServer.Api.Hubs
             return base.OnDisconnectedAsync(exception);
         }
 
-        
-        
+
+
         public static void BroadcastChange(string tableName, IReadOnlyList<DbRow> entities)
         {
             var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
@@ -65,26 +65,26 @@ namespace MyNoSqlServer.Api.Hubs
             {
                 if (packetToBroadcast == null)
                     packetToBroadcast = entities.ToHubUpdateContract();
-                
-                clientProxy.SendAsync("u:"+tableName, packetToBroadcast);
+
+                clientProxy.SendAsync("u", tableName, packetToBroadcast);
             }
-            
+
         }
-        
+
         public static void BroadcastDelete(string tableName, IReadOnlyList<DbRow> dbRows)
         {
             var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
-            
+
             byte[] packetToBroadcast = null;
-            
+
             foreach (var clientProxy in clientsToSend)
             {
                 if (packetToBroadcast == null)
-                  packetToBroadcast = dbRows.ToHubDeleteContract();
-                
-                clientProxy.SendAsync("d:"+tableName,tableName, packetToBroadcast);
+                    packetToBroadcast = dbRows.ToHubDeleteContract();
+
+                clientProxy.SendAsync("d", tableName, packetToBroadcast);
             }
-            
+
         }
 
         public async Task Subscribe(string tableName)
@@ -93,20 +93,20 @@ namespace MyNoSqlServer.Api.Hubs
                 return;
 
             var table = DbInstance.GetTable(tableName);
-            
+
             if (table == null)
                 return;
-            
+
             Connections.Update(Context.ConnectionId, itm => { itm.Subscribe(tableName); });
 
             var rows = table.GetAllRecords(null);
 
             var dataToSend = rows.ToHubUpdateContract();
 
-            await Clients.Caller.SendCoreAsync(tableName, new object[]{dataToSend});
+            await Clients.Caller.SendCoreAsync(tableName, new object[] { dataToSend });
         }
-        
+
     }
-    
-    
+
+
 }
