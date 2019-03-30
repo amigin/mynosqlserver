@@ -66,7 +66,7 @@ namespace MyNoSqlServer.Api.Hubs
                 if (packetToBroadcast == null)
                     packetToBroadcast = entities.ToHubUpdateContract();
 
-                clientProxy.SendAsync("u", tableName, packetToBroadcast);
+                clientProxy.SendAsync("u" + tableName, packetToBroadcast);
             }
 
         }
@@ -82,7 +82,7 @@ namespace MyNoSqlServer.Api.Hubs
                 if (packetToBroadcast == null)
                     packetToBroadcast = dbRows.ToHubDeleteContract();
 
-                clientProxy.SendAsync("d", tableName, packetToBroadcast);
+                clientProxy.SendAsync("d" + tableName, packetToBroadcast);
             }
 
         }
