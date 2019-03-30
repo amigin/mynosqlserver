@@ -66,7 +66,7 @@ namespace MyNoSqlServer.Api.Hubs
                 if (packetToBroadcast == null)
                     packetToBroadcast = entities.ToHubUpdateContract();
 
-                clientProxy.SendAsync("u" + tableName, packetToBroadcast);
+                clientProxy.SendAsync(tableName, "u", packetToBroadcast);
             }
 
         }
@@ -82,7 +82,7 @@ namespace MyNoSqlServer.Api.Hubs
                 if (packetToBroadcast == null)
                     packetToBroadcast = dbRows.ToHubDeleteContract();
 
-                clientProxy.SendAsync("d" + tableName, packetToBroadcast);
+                clientProxy.SendAsync(tableName, "d" packetToBroadcast);
             }
 
         }
@@ -103,7 +103,7 @@ namespace MyNoSqlServer.Api.Hubs
 
             var dataToSend = rows.ToHubUpdateContract();
 
-            await Clients.Caller.SendCoreAsync("u" + tableName, new object[] { dataToSend });
+            await Clients.Caller.SendCoreAsync(tableName, "u", new object[] { dataToSend });
         }
 
     }
