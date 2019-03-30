@@ -72,7 +72,7 @@ namespace MyNoSqlServer.Api.Controllers
             if (dbPartition != null)
             {
                 ServiceLocator.SnapshotSaverEngine.Synchronize(table.Name, dbPartition);
-                ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(table.Name, new[]{dbRow});
+                ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeUpdate(table.Name, new[]{dbRow});
             }
 
             return dbPartition != null ? this.ResponseOk() : this.ResponseConflict("Can not insert entity");
@@ -96,7 +96,7 @@ namespace MyNoSqlServer.Api.Controllers
             var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
             
             ServiceLocator.SnapshotSaverEngine.Synchronize(table.Name, dbPartition);
-            ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(table.Name, new[]{dbRow});
+            ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeUpdate(table.Name, new[]{dbRow});
 
             return this.ResponseOk();
         }

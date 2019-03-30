@@ -306,6 +306,45 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
+        public IEnumerable<DbPartition> CleanAndBulkInsert(IEnumerable<ArraySpan<byte>> itemsAsArray)
+        {
+
+            var dbRows = itemsAsArray
+                .Select(arraySpan => arraySpan
+                    .AsArray()
+                    .ToDbRow())
+                .ToArray();
+            
+            var partitionsToSync = new Dictionary<string, DbPartition>();
+            
+            ReaderWriterLockSlim.EnterWriteLock();
+            
+            try
+            {
+                Partitions.Clear();
+                
+                foreach (var dbRow in dbRows)
+                {
+                    if (!Partitions.ContainsKey(dbRow.PartitionKey))
+                        Partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
+
+                    var partition = Partitions[dbRow.PartitionKey];
+
+                    partition.InsertOrReplace(dbRow);
+                    
+                    if (!partitionsToSync.ContainsKey(partition.PartitionKey))
+                        partitionsToSync.Add(partition.PartitionKey, partition);
+                }
+                
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
+
+            return partitionsToSync.Values;
+        }
+
 
         public IEnumerable<DbRow> ApplyQuery(IEnumerable<QueryCondition> queryConditions)
         {

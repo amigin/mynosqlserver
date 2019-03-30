@@ -26,11 +26,34 @@ namespace MyNoSqlServer.Api.Controllers
             foreach (var dbPartition in dbPartitions)
                 ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
 
-            ServiceLocator.Synchronizer.DbRowSynchronizer?.Synchronize(tableName, dbRows);
+            ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeUpdate(tableName, dbRows);
+            
+            return this.ResponseOk();
+
+        }
+        
+          
+        [HttpPost]
+        public IActionResult CleanAndBulkInsert([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body)
+        {
+            if (string.IsNullOrEmpty(tableName))
+                return this.TableNameIsNull();
+            
+            var table = DbInstance.CreateTableIfNotExists(tableName);
+
+            var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
+
+            var dbPartitions = table.CleanAndBulkInsert(entitiesToInsert);
+
+            foreach (var dbPartition in dbPartitions)
+                ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+
+            ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeInit(tableName);
             
             return this.ResponseOk();
 
         }
         
     }
+
 }

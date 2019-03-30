@@ -7,7 +7,14 @@ namespace MyNoSqlServer.Api.Services
 {
     public class DbRowSynchronizerToSignalR : IDbRowSynchronizer
     {
-        public void Synchronize(string tableName, IReadOnlyList<DbRow> dbRow)
+
+
+        public void SynchronizeInit(string tableName)
+        {
+            ChangesHub.BroadCastInit(tableName);
+        }
+
+        public void SynchronizeUpdate(string tableName, IReadOnlyList<DbRow> dbRow)
         {
             ChangesHub.BroadcastChange(tableName, dbRow);
         }

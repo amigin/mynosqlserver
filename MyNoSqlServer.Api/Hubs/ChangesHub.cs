@@ -87,6 +87,27 @@ namespace MyNoSqlServer.Api.Hubs
 
         }
 
+
+        public static void BroadCastInit(string tableName)
+        {
+            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
+            
+            var table = DbInstance.GetTable(tableName);
+
+            if (table == null)
+                return;
+
+            byte[] packetToBroadcast = null;
+
+            foreach (var clientProxy in clientsToSend)
+            {
+                if (packetToBroadcast == null)
+                    packetToBroadcast = table.GetAllRecords(null).ToHubUpdateContract();
+
+                clientProxy.SendAsync(tableName, "i", packetToBroadcast);
+            }
+        }
+
         public async Task Subscribe(string tableName)
         {
             if (string.IsNullOrEmpty(tableName))

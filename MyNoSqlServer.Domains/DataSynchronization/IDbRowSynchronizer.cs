@@ -5,7 +5,9 @@ namespace MyNoSqlServer.Domains.DataSynchronization
 {
     public interface IDbRowSynchronizer
     {
-        void Synchronize(string tableName, IReadOnlyList<DbRow> dbRow);
+        void SynchronizeInit(string tableName);
+
+        void SynchronizeUpdate(string tableName, IReadOnlyList<DbRow> dbRow);
 
         void SynchronizeDelete(string tableName, IReadOnlyList<DbRow> dbRows);
     }
