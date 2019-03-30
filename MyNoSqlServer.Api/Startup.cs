@@ -2,7 +2,10 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MyNoSqlServer.Api.Hubs;
+using MyNoSqlServer.Api.Services;
 using MyNoSqlServer.AzureStorage;
+using MyNoSqlServer.Domains;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace MyNoSqlServer.Api
@@ -27,6 +30,8 @@ namespace MyNoSqlServer.Api
                 options.SerializerSettings.ContractResolver
                     = new Newtonsoft.Json.Serialization.DefaultContractResolver();
             });
+            
+            services.AddSignalR(); 
 
             // Register the Swagger generator, defining 1 or more Swagger documents
             services.AddSwaggerGen(c => { c.SwaggerDoc("v1", new Info {Title = "MyNoSql API", Version = "v1"}); });
@@ -34,6 +39,8 @@ namespace MyNoSqlServer.Api
             var settings = SettingsLoader.LoadSettings();
             
             settings.BackupAzureConnectString.BindAzureStorage();
+
+            ServiceLocator.Synchronizer.DbRowSynchronizer = new DbRowSynchronizerToSignalR();
 
         }
 
@@ -61,6 +68,13 @@ namespace MyNoSqlServer.Api
 
             app.UseHttpsRedirection();
             app.UseMvc();
+            
+            app.UseSignalR(routes =>
+            {
+                routes.MapHub<ChangesHub>("/changes");
+            });
+            
+            
         }
     }
 }

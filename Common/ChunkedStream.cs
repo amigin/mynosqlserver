@@ -58,7 +58,6 @@ namespace Common
             return CopyToBuffer((int) Position, buffer, offset, count);
         }
 
-
         public byte[] AsArray()
         {
             var result = new byte[Length];
