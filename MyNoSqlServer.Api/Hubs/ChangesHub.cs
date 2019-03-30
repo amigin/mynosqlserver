@@ -103,7 +103,7 @@ namespace MyNoSqlServer.Api.Hubs
 
             var dataToSend = rows.ToHubUpdateContract();
 
-            await Clients.Caller.SendAsync(tableName, "u", dataToSend);
+            await Clients.Caller.SendAsync(tableName, "i", dataToSend);
         }
 
     }
