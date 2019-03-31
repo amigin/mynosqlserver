@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Common;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using MyNoSqlServer.Domains.SnapshotSaver;
 
 namespace MyNoSqlServer.AzureStorage
 {
@@ -97,18 +98,80 @@ namespace MyNoSqlServer.AzureStorage
             await blob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
             Console.WriteLine($"{DateTime.UtcNow:s} Saved saving blob: {containerName}/{blobName}");
         }
-        
-        public async ValueTask<byte[]> LoadBlobAsync(string containerName, string blobName)
+
+   
+        private async Task<IReadOnlyList<CloudBlobContainer>> GetListOfContainersAsync()
         {
-            var container = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
-
-            var blockBlob = container.GetBlockBlobReference(blobName);
+            var cloudBlobClient = _storageAccount.CreateCloudBlobClient();
             
-            var memoryStream = new MemoryStream();
+            
+            BlobContinuationToken continuationToken = null;
+            var containers = new List<CloudBlobContainer>();
 
-            await blockBlob.DownloadToStreamAsync(memoryStream);
+            do
+            {
+                ContainerResultSegment response = await cloudBlobClient.ListContainersSegmentedAsync(continuationToken);
+                continuationToken = response.ContinuationToken;
+                containers.AddRange(response.Results);
 
-            return memoryStream.ToArray();
+            } while (continuationToken != null);
+
+            return containers;
+        }
+
+        private static async Task<IReadOnlyList<CloudBlob>> GetListOfBlobs(CloudBlobContainer cloudBlobContainer)
+        {
+
+            var dir = cloudBlobContainer.GetDirectoryReference("");
+
+            BlobContinuationToken continuationToken = null;
+            var results = new List<CloudBlockBlob>();
+            
+            do
+            {
+                var response = await dir.ListBlobsSegmentedAsync(continuationToken);
+                continuationToken = response.ContinuationToken;
+                results.AddRange(response.Results.Cast<CloudBlockBlob>());
+            } while (continuationToken != null);
+
+            return results;
+        }
+
+
+        private const string IgnoreContainerName = "nosqlsnapshots";
+        public async Task<IReadOnlyList<PartitionSnapshot>> LoadBlobsAsync()
+        {
+
+            var result = new List<PartitionSnapshot>();
+            var containers = await GetListOfContainersAsync();
+
+            foreach (var container in containers.Where(c => c.Name != IgnoreContainerName))
+            {
+
+                foreach (var blockBlob in await GetListOfBlobs(container))
+                {
+                    var memoryStream = new MemoryStream();
+
+                    await blockBlob.DownloadToStreamAsync(memoryStream);
+
+                    var snapshot = new PartitionSnapshot
+                    {
+                        TableName = container.Name,
+                        PartitionKey = blockBlob.Name.Base64ToString(),
+                        Snapshot =  memoryStream.ToArray()
+                    };
+                    
+                    result.Add(snapshot);
+                    
+                    
+                    Console.WriteLine("Loaded snapshot: "+snapshot);
+                }
+           
+            }
+
+
+            return result;
+
         }        
 
 

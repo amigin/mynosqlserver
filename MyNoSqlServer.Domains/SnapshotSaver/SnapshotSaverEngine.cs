@@ -23,6 +23,12 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 Snapshot = snapshot
             };
         }
+
+
+        public override string ToString()
+        {
+            return TableName + "/" + PartitionKey;
+        }
     }
 
     public interface ISnapshotSaverEngine

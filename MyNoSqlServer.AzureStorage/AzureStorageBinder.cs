@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Common;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.SnapshotSaver;
@@ -30,7 +28,7 @@ namespace MyNoSqlServer.AzureStorage
 
             var storageBlob = new AzureStorageBlob(connectionString);
 
-            const string containerName = "nosqlsnapshots";
+         
  
 
             SnapshotSaverEngine.Instance = new SnapshotSaverEngine(
@@ -44,6 +42,11 @@ namespace MyNoSqlServer.AzureStorage
 
                 async () =>
                 {
+
+                    var snapshots = await storageBlob.LoadBlobsAsync();
+                    return snapshots;
+                    
+                    /*
                     var files = await storageBlob.GetFilesAsync(containerName);
                     var result = new List<PartitionSnapshot>();
 
@@ -58,6 +61,7 @@ namespace MyNoSqlServer.AzureStorage
                     }
 
                     return result;
+                    */
                 }
 
             );
