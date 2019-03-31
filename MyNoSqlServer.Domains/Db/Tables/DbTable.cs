@@ -49,6 +49,20 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
+        public DbPartition GetPartition(string partitionKey)
+        {
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                return _partitions.ContainsKey(partitionKey) ? _partitions[partitionKey] : null;
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
+        }
+
+
         public void InitPartitionFromSnapshot(string partitionKey, byte[] data)
         {
             
@@ -283,7 +297,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 .Select(arraySpan => arraySpan
                     .AsArray()
                     .ToDbRow())
-                .ToArray();
+                .ToList();
             
             
             var partitionsToSync = new Dictionary<string, DbPartition>();
@@ -327,7 +341,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 .Select(arraySpan => arraySpan
                     .AsArray()
                     .ToDbRow())
-                .ToArray();
+                .ToList();
             
             ReaderWriterLockSlim.EnterWriteLock();
             
@@ -350,6 +364,45 @@ namespace MyNoSqlServer.Domains.Db.Tables
             {
                 ReaderWriterLockSlim.ExitWriteLock();
             }
+        }
+        
+        public IEnumerable<DbPartition> CleanAndBulkInsert(string partitionKey, IEnumerable<ArraySpan<byte>> itemsAsArray)
+        {
+
+            var dbRows = itemsAsArray
+                .Select(arraySpan => arraySpan
+                    .AsArray()
+                    .ToDbRow())
+                .ToArray();
+            
+            ReaderWriterLockSlim.EnterWriteLock();
+
+            var result = new Dictionary<string, DbPartition>();
+            
+            try
+            {
+                _partitions.Clear();
+                
+                foreach (var dbRow in dbRows)
+                {
+                    if (!_partitions.ContainsKey(dbRow.PartitionKey))
+                        _partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
+
+                    var partition = _partitions[dbRow.PartitionKey];
+
+                    partition.InsertOrReplace(dbRow);
+
+                    if (!result.ContainsKey(dbRow.PartitionKey))
+                        result.Add(dbRow.PartitionKey, partition);
+                }
+                
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
+
+            return result.Values;
         }
         
         public void Clean()
