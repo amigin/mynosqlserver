@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
 
 namespace MyNoSqlServer.Api.Controllers
@@ -34,6 +35,24 @@ namespace MyNoSqlServer.Api.Controllers
             if (DbInstance.CreateTable(tableName))
               return this.ResponseOk();
 
+            return this.ResponseConflict("Can not create table: " + tableName);
+        }
+        
+        [HttpPost("Tables/Clean")]
+        public IActionResult Clean([Required][FromQuery]string tableName)
+        {
+            if (string.IsNullOrEmpty(tableName))
+                return this.ResponseConflict("Please specify table name");
+
+
+            var table = DbInstance.GetTable(tableName);
+            if (table == null)
+                return this.TableNotFound(tableName);
+
+            table.Clean();
+            
+            ServiceLocator.Synchronizer.DbRowSynchronizer.SynchronizeInit(tableName);
+            
             return this.ResponseConflict("Can not create table: " + tableName);
         }
     }

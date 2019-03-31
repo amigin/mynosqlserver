@@ -344,6 +344,20 @@ namespace MyNoSqlServer.Domains.Db.Tables
 
             return partitionsToSync.Values;
         }
+        
+        public void Clean()
+        {
+            ReaderWriterLockSlim.EnterWriteLock();
+            
+            try
+            {
+                Partitions.Clear();
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
+        }
 
 
         public IEnumerable<DbRow> ApplyQuery(IEnumerable<QueryCondition> queryConditions)
@@ -362,6 +376,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     yield return dbRow;
             
         }
-        
+
+
     }
 }

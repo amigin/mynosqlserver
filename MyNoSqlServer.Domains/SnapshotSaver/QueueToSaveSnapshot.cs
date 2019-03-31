@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Common;
-using MyNoSqlServer.Domains.Db;
 using MyNoSqlServer.Domains.Db.Partitions;
 
 namespace MyNoSqlServer.Domains.SnapshotSaver
@@ -16,11 +15,12 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             return (tableName +TableNamePartitionSplitter + partitionKey).ToBase64();
         }
 
-        private static (string tableName, string partitionKey) DecodeKey(string base64Key)
+        private static string DecodeKey(string base64Key)
         {
             var pair = base64Key.Base64ToString().Split(TableNamePartitionSplitter);
-            return (pair[0], pair[1]);
+            return pair[0];
         }
+
         public void Enqueue(string tableName, DbPartition partitionToSave)
         {
             var key = GenerateKey(tableName, partitionToSave.PartitionKey);
@@ -32,8 +32,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                     _saveQueue.Add(key, partitionToSave);
             }
         }
-        
-        
+
         public (string tableName, DbPartition dbPartition) Dequeue()
         {
             lock (_saveQueue)
@@ -45,7 +44,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
 
                 _saveQueue.Remove(result.Key);
 
-                var (table, _) = DecodeKey(result.Key);
+                var table = DecodeKey(result.Key);
 
                 return (table, result.Value);
             }

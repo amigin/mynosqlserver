@@ -37,7 +37,7 @@ namespace MyNoSqlServer.AzureStorage
         
         private readonly Dictionary<string, CloudBlobContainer> _containers = new Dictionary<string, CloudBlobContainer>();
         
-        private async ValueTask<CloudBlobContainer> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess = false, bool createIfNotExists = false)
+        private async ValueTask<CloudBlobContainer> GetBlockBlobReferenceAsync(string container, string key, bool anonymousAccess, bool createIfNotExists)
         {
             NameValidator.ValidateBlobName(key);
 
@@ -69,14 +69,32 @@ namespace MyNoSqlServer.AzureStorage
             return containerRef;
         }        
 
+        
+        private async ValueTask<CloudBlobContainer> GetBlockBlobReferenceAsync(string container)
+        {
+            var containerRef = GetContainerReference(container);
+
+            if (!await containerRef.ExistsAsync())
+                return null;
+            
+            return containerRef;
+        } 
+        
         public async ValueTask SaveToBlobAsync(string containerName, string blobName, byte[] bytes)
         {
-            var container = await GetBlockBlobReferenceAsync(containerName, blobName, false, true);
+            var container = await GetBlockBlobReferenceAsync(containerName);
+
+            if (container == null)
+            {
+                Console.WriteLine($"{DateTime.UtcNow:s} Skipped saving blob: {containerName}/{blobName}");
+                return;
+            }
 
             var blob = container.GetBlockBlobReference(blobName);
             blob.Properties.ContentType = "application/json";
 
             await blob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
+            Console.WriteLine($"{DateTime.UtcNow:s} Saved saving blob: {containerName}/{blobName}");
         }
         
         public async ValueTask<byte[]> LoadBlobAsync(string containerName, string blobName)

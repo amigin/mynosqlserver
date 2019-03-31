@@ -13,7 +13,7 @@ namespace MyNoSqlServer.AzureStorage
         
         private static string GenerateBlobName(string tableName, string partitionKey)
         {
-            return (tableName +TableNamePartitionSplitter + partitionKey).ToBase64();
+            return (/*tableName +TableNamePartitionSplitter + */partitionKey).ToBase64();
         }
 
         public static (string tableName, string partitionKey) DecodeKey(string base64Key)
@@ -37,9 +37,9 @@ namespace MyNoSqlServer.AzureStorage
 
                 partitionSnapshot =>
                 {
-                    Console.WriteLine($"{DateTime.UtcNow:s} Save snapshot {partitionSnapshot.TableName}/{partitionSnapshot.PartitionKey}. Data Length: {partitionSnapshot.Snapshot.Length}");
+                    //Console.WriteLine($"{DateTime.UtcNow:s} Save snapshot {partitionSnapshot.TableName}/{partitionSnapshot.PartitionKey}. Data Length: {partitionSnapshot.Snapshot.Length}");
                     var blobName = GenerateBlobName(partitionSnapshot.TableName, partitionSnapshot.PartitionKey);
-                    return storageBlob.SaveToBlobAsync(containerName, blobName, partitionSnapshot.Snapshot);
+                    return storageBlob.SaveToBlobAsync(partitionSnapshot.TableName, blobName, partitionSnapshot.Snapshot);
                 },
 
                 async () =>

@@ -28,6 +28,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
     public interface ISnapshotSaverEngine
     {
         void Synchronize(string tableName, DbPartition partitionToSave);
+        void SynchronizeClean(string tableName);
     }
     
     public class SnapshotSaverEngine : ISnapshotSaverEngine
@@ -38,8 +39,13 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
         public void Synchronize(string tableName, DbPartition partitionToSave)
         {
             _queueToSaveSnapshot.Enqueue(tableName, partitionToSave);
-        }        
-        
+        }
+
+        public void SynchronizeClean(string tableName)
+        {
+            _queueToSaveSnapshot.Enqueue(tableName, null);
+        }
+
         private readonly Func<PartitionSnapshot, ValueTask> _saveSnapshot;
         private readonly Func<Task<IEnumerable<PartitionSnapshot>>> _loadSnapshots;
 
@@ -69,7 +75,6 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 }
 
             }
-
 
         }
 
