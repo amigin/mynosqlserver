@@ -68,7 +68,7 @@ namespace MyNoSqlServer.AzureStorage
             blob.Properties.ContentType = "application/json";
 
             await blob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
-            Console.WriteLine($"{DateTime.UtcNow:s} Saved saving blob: {containerName}/{blobName}");
+            Console.WriteLine($"{DateTime.UtcNow:s} Saved snapshot: {containerName}/{blobName}");
         }
 
    
