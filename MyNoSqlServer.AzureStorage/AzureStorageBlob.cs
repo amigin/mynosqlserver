@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Common;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -90,7 +91,7 @@ namespace MyNoSqlServer.AzureStorage
                 return;
             }
 
-            var blob = container.GetBlockBlobReference(blobName);
+            var blob = container.GetBlockBlobReference(blobName.ToBase64());
             blob.Properties.ContentType = "application/json";
 
             await blob.UploadFromByteArrayAsync(bytes, 0, bytes.Length);
