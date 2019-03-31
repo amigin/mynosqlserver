@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Partitions;
 using MyNoSqlServer.Domains.Db.Rows;
+using MyNoSqlServer.Domains.Db.Tables;
 
 namespace MyNoSqlServer.Api.Hubs
 {
@@ -55,9 +57,9 @@ namespace MyNoSqlServer.Api.Hubs
 
 
 
-        public static void BroadcastChange(string tableName, IReadOnlyList<DbRow> entities)
+        public static void BroadcastChange(DbTable dbTable, IReadOnlyList<DbRow> entities)
         {
-            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
+            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(dbTable.Name)).Select(itm => itm.Client);
 
             byte[] packetToBroadcast = null;
 
@@ -66,14 +68,14 @@ namespace MyNoSqlServer.Api.Hubs
                 if (packetToBroadcast == null)
                     packetToBroadcast = entities.ToHubUpdateContract();
 
-                clientProxy.SendAsync(tableName, "u", packetToBroadcast);
+                clientProxy.SendAsync(dbTable.Name, "u", packetToBroadcast);
             }
 
         }
 
-        public static void BroadcastDelete(string tableName, IReadOnlyList<DbRow> dbRows)
+        public static void BroadcastDelete(DbTable dbTable, IReadOnlyList<DbRow> dbRows)
         {
-            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
+            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(dbTable.Name)).Select(itm => itm.Client);
 
             byte[] packetToBroadcast = null;
 
@@ -82,29 +84,39 @@ namespace MyNoSqlServer.Api.Hubs
                 if (packetToBroadcast == null)
                     packetToBroadcast = dbRows.ToHubDeleteContract();
 
-                clientProxy.SendAsync(tableName, "d", packetToBroadcast);
+                clientProxy.SendAsync(dbTable.Name, "d", packetToBroadcast);
             }
 
         }
 
 
-        public static void BroadCastInit(string tableName)
+        public static void BroadCastInit(DbTable dbTable)
         {
-            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(tableName)).Select(itm => itm.Client);
-            
-            var table = DbInstance.GetTable(tableName);
-
-            if (table == null)
-                return;
+            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(dbTable.Name)).Select(itm => itm.Client);
 
             byte[] packetToBroadcast = null;
 
             foreach (var clientProxy in clientsToSend)
             {
                 if (packetToBroadcast == null)
-                    packetToBroadcast = table.GetAllRecords(null).ToHubUpdateContract();
+                    packetToBroadcast = dbTable.GetAllRecords(null).ToHubUpdateContract();
 
-                clientProxy.SendAsync(tableName, "i", packetToBroadcast);
+                clientProxy.SendAsync(dbTable.Name, "i", packetToBroadcast);
+            }
+        }
+        
+        public static void BroadCastInit(DbTable dbTable, DbPartition partition)
+        {
+            var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(dbTable.Name)).Select(itm => itm.Client);
+
+            byte[] packetToBroadcast = null;
+
+            foreach (var clientProxy in clientsToSend)
+            {
+                if (packetToBroadcast == null)
+                    packetToBroadcast = partition.GetAllRows().ToHubUpdateContract();
+
+                clientProxy.SendAsync(dbTable.Name, "i:"+partition.PartitionKey, packetToBroadcast);
             }
         }
 

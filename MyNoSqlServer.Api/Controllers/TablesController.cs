@@ -51,7 +51,8 @@ namespace MyNoSqlServer.Api.Controllers
 
             table.Clean();
             
-            ServiceLocator.Synchronizer.DbRowSynchronizer.SynchronizeInit(tableName);
+            ServiceLocator.SnapshotSaverEngine.SynchronizeTable(table);
+            ServiceLocator.Synchronizer.ChangesPublisher.PublishInitTable(table);
             
             return this.ResponseConflict("Can not create table: " + tableName);
         }

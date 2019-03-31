@@ -32,7 +32,21 @@ namespace MyNoSqlServer.Domains.Db.Tables
         
         internal readonly ReaderWriterLockSlim ReaderWriterLockSlim = new ReaderWriterLockSlim();
         
-        public readonly SortedList<string, DbPartition> Partitions = new SortedList<string, DbPartition>();
+        private readonly SortedList<string, DbPartition> _partitions = new SortedList<string, DbPartition>();
+
+
+        public IReadOnlyList<DbPartition> GetAllPartitions()
+        {
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                return _partitions.Values.ToList();
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
+        }
 
 
         public void InitPartitionFromSnapshot(string partitionKey, byte[] data)
@@ -52,10 +66,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     if (entityInfo.PartitionKey != partitionKey)
                         continue;
                     
-                    if (!Partitions.ContainsKey(entityInfo.PartitionKey))
-                        Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
+                    if (!_partitions.ContainsKey(entityInfo.PartitionKey))
+                        _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
                     
-                    var partition = Partitions[entityInfo.PartitionKey];
+                    var partition = _partitions[entityInfo.PartitionKey];
                     
                     var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, array);
 
@@ -75,10 +89,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
-                if (!Partitions.ContainsKey(entityInfo.PartitionKey))
-                    Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
+                if (!_partitions.ContainsKey(entityInfo.PartitionKey))
+                    _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
-                var partition = Partitions[entityInfo.PartitionKey];
+                var partition = _partitions[entityInfo.PartitionKey];
                 
                 var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
                 
@@ -99,10 +113,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
-                if (!Partitions.ContainsKey(entityInfo.PartitionKey))
-                    Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
+                if (!_partitions.ContainsKey(entityInfo.PartitionKey))
+                    _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
-                var partition = Partitions[entityInfo.PartitionKey];
+                var partition = _partitions[entityInfo.PartitionKey];
                 
                 var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
                 partition.InsertOrReplace(dbRow);
@@ -122,9 +136,9 @@ namespace MyNoSqlServer.Domains.Db.Tables
             try
             {
 
-                if (!Partitions.ContainsKey(partitionKey))
+                if (!_partitions.ContainsKey(partitionKey))
                     return null;
-                var partition = Partitions[partitionKey];
+                var partition = _partitions[partitionKey];
 
                 return partition.GetRow(rowKey);
 
@@ -144,12 +158,12 @@ namespace MyNoSqlServer.Domains.Db.Tables
             {
                 if (limit == null)
                 {
-                    foreach (var partition in Partitions.Values)
+                    foreach (var partition in _partitions.Values)
                         result.AddRange(partition.GetAllRows());
                 }
                 else
                 {
-                    foreach (var partition in Partitions.Values)
+                    foreach (var partition in _partitions.Values)
                     foreach (var dbRow in partition.GetAllRows())
                     {
                         result.Add(dbRow);
@@ -171,10 +185,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             ReaderWriterLockSlim.EnterReadLock();
             try
             {
-                if (!Partitions.ContainsKey(partitionKey))
+                if (!_partitions.ContainsKey(partitionKey))
                     return Array.Empty<DbRow>();
 
-                var partition = Partitions[partitionKey];
+                var partition = _partitions[partitionKey];
 
                 if (skip == null && limit == null)
                     return partition.GetAllRows();
@@ -193,10 +207,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
-                if (!Partitions.ContainsKey(partitionKey))
+                if (!_partitions.ContainsKey(partitionKey))
                     return (null, null);
 
-                var partition = Partitions[partitionKey];
+                var partition = _partitions[partitionKey];
 
                 var row = partition.DeleteRow(rowKey);
                 
@@ -216,10 +230,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
-                if (!Partitions.ContainsKey(partitionKey))
+                if (!_partitions.ContainsKey(partitionKey))
                     return (null,null);
 
-                var partition = Partitions[partitionKey];
+                var partition = _partitions[partitionKey];
 
                 var dbRows = partition.CleanAndKeepLastRecords(amount);
                 
@@ -233,10 +247,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
         
         internal void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
         {
-            if (!Partitions.ContainsKey(entityInfo.PartitionKey))
-                Partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
+            if (!_partitions.ContainsKey(entityInfo.PartitionKey))
+                _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
-            var partition = Partitions[entityInfo.PartitionKey];
+            var partition = _partitions[entityInfo.PartitionKey];
 
             partition.RestoreRecord(entityInfo, data);
 
@@ -248,10 +262,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             ReaderWriterLockSlim.EnterReadLock();
             try
             {
-                if (!Partitions.ContainsKey(entityInfo.PartitionKey))
+                if (!_partitions.ContainsKey(entityInfo.PartitionKey))
                     return false;
 
-                var partition = Partitions[entityInfo.PartitionKey];
+                var partition = _partitions[entityInfo.PartitionKey];
 
                 return partition.HasRecord(entityInfo.RowKey);
             }
@@ -281,10 +295,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
             {
                 foreach (var dbRow in dbRows)
                 {
-                    if (!Partitions.ContainsKey(dbRow.PartitionKey))
-                        Partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
+                    if (!_partitions.ContainsKey(dbRow.PartitionKey))
+                        _partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
 
-                    var partition = Partitions[dbRow.PartitionKey];
+                    var partition = _partitions[dbRow.PartitionKey];
 
                     partition.InsertOrReplace(dbRow);
                     
@@ -306,7 +320,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
-        public IEnumerable<DbPartition> CleanAndBulkInsert(IEnumerable<ArraySpan<byte>> itemsAsArray)
+        public void CleanAndBulkInsert(IEnumerable<ArraySpan<byte>> itemsAsArray)
         {
 
             var dbRows = itemsAsArray
@@ -315,25 +329,20 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     .ToDbRow())
                 .ToArray();
             
-            var partitionsToSync = new Dictionary<string, DbPartition>();
-            
             ReaderWriterLockSlim.EnterWriteLock();
             
             try
             {
-                Partitions.Clear();
+                _partitions.Clear();
                 
                 foreach (var dbRow in dbRows)
                 {
-                    if (!Partitions.ContainsKey(dbRow.PartitionKey))
-                        Partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
+                    if (!_partitions.ContainsKey(dbRow.PartitionKey))
+                        _partitions.Add(dbRow.PartitionKey, DbPartition.Create(dbRow.PartitionKey));
 
-                    var partition = Partitions[dbRow.PartitionKey];
+                    var partition = _partitions[dbRow.PartitionKey];
 
                     partition.InsertOrReplace(dbRow);
-                    
-                    if (!partitionsToSync.ContainsKey(partition.PartitionKey))
-                        partitionsToSync.Add(partition.PartitionKey, partition);
                 }
                 
             }
@@ -341,8 +350,6 @@ namespace MyNoSqlServer.Domains.Db.Tables
             {
                 ReaderWriterLockSlim.ExitWriteLock();
             }
-
-            return partitionsToSync.Values;
         }
         
         public void Clean()
@@ -351,7 +358,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
             
             try
             {
-                Partitions.Clear();
+                _partitions.Clear();
             }
             finally
             {
@@ -365,8 +372,8 @@ namespace MyNoSqlServer.Domains.Db.Tables
             var conditionsDict = queryConditions.GroupBy(itm => itm.FieldName).ToDictionary(itm => itm.Key, itm => itm.ToList());
 
             var partitions = conditionsDict.ContainsKey(DbRowDataUtils.PartitionKeyField)
-                ? Partitions.FilterByQueryConditions(conditionsDict[DbRowDataUtils.PartitionKeyField]).ToList()
-                : Partitions.Values.ToList();
+                ? _partitions.FilterByQueryConditions(conditionsDict[DbRowDataUtils.PartitionKeyField]).ToList()
+                : _partitions.Values.ToList();
 
             if (conditionsDict.ContainsKey(DbRowDataUtils.PartitionKeyField))
                 conditionsDict.Remove(DbRowDataUtils.PartitionKeyField);

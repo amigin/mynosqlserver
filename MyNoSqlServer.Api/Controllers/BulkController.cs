@@ -24,9 +24,9 @@ namespace MyNoSqlServer.Api.Controllers
             var (dbPartitions, dbRows) = table.BulkInsertOrReplace(entitiesToInsert);
 
             foreach (var dbPartition in dbPartitions)
-                ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
 
-            ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeUpdate(tableName, dbRows);
+            ServiceLocator.Synchronizer.ChangesPublisher?.SynchronizeUpdate(table, dbRows);
             
             return this.ResponseOk();
 
@@ -43,12 +43,11 @@ namespace MyNoSqlServer.Api.Controllers
 
             var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
 
-            var dbPartitions = table.CleanAndBulkInsert(entitiesToInsert);
+            table.CleanAndBulkInsert(entitiesToInsert);
 
-            foreach (var dbPartition in dbPartitions)
-                ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
+            ServiceLocator.SnapshotSaverEngine.SynchronizeTable(table);
 
-            ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeInit(tableName);
+            ServiceLocator.Synchronizer.ChangesPublisher?.PublishInitTable(table);
             
             return this.ResponseOk();
 

@@ -11,7 +11,7 @@ namespace MyNoSqlServer.Domains
         
         public static class Synchronizer
         {
-            public static IDbRowSynchronizer DbRowSynchronizer { get; set; }
+            public static IChangesPublisher ChangesPublisher { get; set; }
             
         }
         

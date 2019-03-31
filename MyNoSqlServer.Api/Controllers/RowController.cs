@@ -71,8 +71,8 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (dbPartition != null)
             {
-                ServiceLocator.SnapshotSaverEngine.Synchronize(table.Name, dbPartition);
-                ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeUpdate(table.Name, new[]{dbRow});
+                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
+                ServiceLocator.Synchronizer.ChangesPublisher?.SynchronizeUpdate(table, new[]{dbRow});
             }
 
             return dbPartition != null ? this.ResponseOk() : this.ResponseConflict("Can not insert entity");
@@ -95,8 +95,8 @@ namespace MyNoSqlServer.Api.Controllers
             var data = Request.BodyAsByteArray();
             var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
             
-            ServiceLocator.SnapshotSaverEngine.Synchronize(table.Name, dbPartition);
-            ServiceLocator.Synchronizer.DbRowSynchronizer?.SynchronizeUpdate(table.Name, new[]{dbRow});
+            ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
+            ServiceLocator.Synchronizer.ChangesPublisher?.SynchronizeUpdate(table, new[]{dbRow});
 
             return this.ResponseOk();
         }
@@ -124,8 +124,8 @@ namespace MyNoSqlServer.Api.Controllers
             if (dbPartition == null) 
                 return this.RowNotFound(tableName, partitionKey, rowKey);
             
-            ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
-            ServiceLocator.Synchronizer.DbRowSynchronizer.SynchronizeDelete(tableName, new[]{dbRow});
+            ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
+            ServiceLocator.Synchronizer.ChangesPublisher.SynchronizeDelete(table, new[]{dbRow});
             
             return this.ResponseOk();
 
@@ -151,8 +151,8 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (dbPartition != null)
             {
-                ServiceLocator.SnapshotSaverEngine.Synchronize(tableName, dbPartition);
-                ServiceLocator.Synchronizer.DbRowSynchronizer.SynchronizeDelete(tableName, dbRows);
+                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
+                ServiceLocator.Synchronizer.ChangesPublisher.SynchronizeDelete(table, dbRows);
             }
             
             return this.ResponseOk();

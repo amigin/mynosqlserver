@@ -40,7 +40,7 @@ namespace MyNoSqlServer.Api
             
             settings.BackupAzureConnectString.BindAzureStorage();
 
-            ServiceLocator.Synchronizer.DbRowSynchronizer = new DbRowSynchronizerToSignalR();
+            ServiceLocator.Synchronizer.ChangesPublisher = new ChangesPublisherToSignalR();
 
         }
 
