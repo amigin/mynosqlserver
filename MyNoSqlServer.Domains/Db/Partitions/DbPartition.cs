@@ -119,6 +119,12 @@ namespace MyNoSqlServer.Domains.Db.Partitions
             return PartitionKey+"; Count: "+_rows.Count;
         }
 
+
+        public void Clean()
+        {
+            _rows.Clear();
+        }
+            
         public IReadOnlyList<DbRow> CleanAndKeepLastRecords(int amount)
         {
             if (amount<0)

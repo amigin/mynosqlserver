@@ -376,12 +376,15 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 .ToArray();
             
             ReaderWriterLockSlim.EnterWriteLock();
+            
+            
 
             var result = new Dictionary<string, DbPartition>();
             
             try
             {
-                _partitions.Clear();
+                if (_partitions.ContainsKey(partitionKey))
+                    _partitions[partitionKey].Clean();
                 
                 foreach (var dbRow in dbRows)
                 {
