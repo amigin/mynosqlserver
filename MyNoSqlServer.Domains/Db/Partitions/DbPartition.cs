@@ -130,13 +130,17 @@ namespace MyNoSqlServer.Domains.Db.Partitions
             if (amount<0)
                 throw new Exception("Amount must be greater than zero");
             
-            var rowsByLastInsertDateTime = _rows.OrderBy(itm => itm.Value.Timestamp).ToQueue();
+            Queue<KeyValuePair<string, DbRow>> rowsByLastInsertDateTime = null;
             
             var result = new List<DbRow>();
             
             while (_rows.Count>amount)
             {
+                if (rowsByLastInsertDateTime == null)
+                    rowsByLastInsertDateTime = _rows.OrderBy(itm => itm.Value.Timestamp).ToQueue();
+                
                 var item = rowsByLastInsertDateTime.Dequeue();
+                
                 result.Add(item.Value);
                 _rows.Remove(item.Key);
             }
