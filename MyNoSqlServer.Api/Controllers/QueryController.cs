@@ -7,12 +7,12 @@ namespace MyNoSqlServer.Api.Controllers
 {
     
     [ApiController]
-    [Route("Query/[Action]")]
+
     public class QueryController : Controller
     {
 
-        [HttpPost("Query")]
-        public IActionResult Query([Required][FromQuery] string tableName,[Required][FromBody] string query)
+        [HttpGet("Query")]
+        public IActionResult Index([Required][FromQuery] string tableName,[Required][FromQuery] string query)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -24,7 +24,6 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (table == null)
                 return this.TableNotFound(tableName);
-
 
             var conditions = query.ParseQueryConditions();
 
