@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using MyNoSqlServer.Domains.Db.Partitions;
@@ -66,17 +67,34 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             return queue;
         }
 
+
+
+        private bool HasSynchronizationTask<T>(List<object> queue, Func<T, bool> func)
+        {
+            foreach (var item in queue)
+            {
+                if (item is T myType)
+                {
+                    if (func(myType))
+                        return true;
+                }
+            }
+
+            return false;
+
+        }
         public void Enqueue(DbTable dbTable, DbPartition partitionToSave)
         {
             lock (_queue)
             {
-
                 var queue = GetQueueForTable(dbTable.Name);
 
-                var elementToEnqueue = SyncPartition.Create(dbTable, partitionToSave);
-                
-                queue.Add(elementToEnqueue);
+                if (HasSynchronizationTask<SyncPartition>(queue,
+                    syncTask => syncTask.DbPartition.PartitionKey == partitionToSave.PartitionKey))
+                    return;
 
+                var elementToEnqueue = SyncPartition.Create(dbTable, partitionToSave);
+                queue.Add(elementToEnqueue);
             }
         }
 
@@ -98,8 +116,14 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             lock (_queue)
             {
                 var queue = GetQueueForTable(tableName);
+
+                if (HasSynchronizationTask<SyncDeletePartition>(queue,
+                    syncTask => syncTask.PartitionKey == partitionToDelete))
+                    return;
+                
                 var elementToEnqueue = SyncDeletePartition.Create(tableName, partitionToDelete);
                 queue.Add(elementToEnqueue);
+
             }
         }
 
