@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace MyNoSqlServer.Api.Controllers
 {
@@ -30,22 +29,22 @@ namespace MyNoSqlServer.Api.Controllers
 
         public static IActionResult TableNotFound(this Controller ctx, string tableName)
         {
-            return ctx.NotFound($"Table {tableName} name");
+            return ctx.StatusCode(204,$"Table {tableName} name");
         }
 
         public static IActionResult PartitionKeyIsNull(this Controller ctx)
         {
-            return ctx.NotFound($"Please specify PartitionKey");
+            return ctx.StatusCode(204,"Please specify PartitionKey");
         }
 
         public static IActionResult RowKeyIsNull(this Controller ctx)
         {
-            return ctx.NotFound($"Please specify RowKey");
+            return ctx.StatusCode(204,"Please specify RowKey");
         }
 
         public static IActionResult RowNotFound(this Controller ctx, string tableName, string partitionKey, string rowKey)
         {
-            return ctx.NotFound($"Entity with PartitionKey={partitionKey} and RowKey={rowKey} at table={tableName} is not found");
+            return ctx.StatusCode(204, $"Entity with PartitionKey={partitionKey} and RowKey={rowKey} at table={tableName} is not found");
         }
 
 

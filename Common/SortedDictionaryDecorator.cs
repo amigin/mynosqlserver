@@ -89,6 +89,29 @@ namespace Common
 
             }
         }
+        
+        
+        public static IEnumerable<TValue> GetHighestAndBelow<TValue>(this SortedList<string, TValue> src, string highestRowKey, int maxAmount)
+        {
+            var index = src.FindNearest(highestRowKey);
+            index++;
+
+            if (index >= src.Count)
+                index = src.Count - 1;
+            
+            var result = new List<TValue>();
+
+            for (var i=index; i>=0; i--)
+            {
+                if (src.Keys[i].LowerOrEqualThen(highestRowKey))
+                    result.Add(src.Values[i]);
+                
+                if (result.Count>=maxAmount)
+                    break;
+            }
+
+            return result;
+        }
 
 
 

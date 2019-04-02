@@ -476,5 +476,25 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 ReaderWriterLockSlim.ExitReadLock();
             }
         }
+
+        public IEnumerable<DbRow> GetHighestRowAndBelow(string partitionKey, string rowKey, int maxAmount)
+        {
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                if (string.IsNullOrEmpty(partitionKey))
+                    return Array.Empty<DbRow>();
+                
+                if (!_partitions.ContainsKey(partitionKey))
+                    return Array.Empty<DbRow>();
+
+                return _partitions[partitionKey].GetHighestRowAndBelow(rowKey, maxAmount);
+                
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
+        }
     }
 }

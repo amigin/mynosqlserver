@@ -112,6 +112,11 @@ namespace MyNoSqlServer.Domains.Db.Partitions
                         yield return row;
             }
         }
+        
+        public IEnumerable<DbRow> GetHighestRowAndBelow(string rowKey, int maxAmount)
+        {
+            return _rows.GetHighestAndBelow(rowKey, maxAmount);
+        }
 
 
         public override string ToString()
@@ -159,5 +164,7 @@ namespace MyNoSqlServer.Domains.Db.Partitions
         {
             return _rows.Count;
         }
+
+
     }
 }

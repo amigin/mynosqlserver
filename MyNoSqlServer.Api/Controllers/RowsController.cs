@@ -28,6 +28,27 @@ namespace MyNoSqlServer.Api.Controllers
             return this.ToDbRowsResult(result);
         }
         
+        
+        [HttpGet("Rows/HighestRowAndBelow")]
+        public IActionResult HighestRowAndBelow([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey, 
+            [Required][FromQuery] string rowKey, [Required][FromQuery] int maxAmount)
+        {
+            if (string.IsNullOrEmpty(tableName))
+                return this.TableNameIsNull();
+
+            if (string.IsNullOrEmpty(partitionKey))
+                return this.PartitionKeyIsNull();
+            
+            if (string.IsNullOrEmpty(rowKey))
+                return this.RowKeyIsNull();
+
+            var table = DbInstance.GetTable(tableName);
+
+            var result = table.GetHighestRowAndBelow(partitionKey, rowKey, maxAmount);
+            
+            return this.ToDbRowsResult(result);
+        }
+        
     }
     
 }
