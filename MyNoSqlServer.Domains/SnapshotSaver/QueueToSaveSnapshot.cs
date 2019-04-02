@@ -7,10 +7,18 @@ using MyNoSqlServer.Domains.Db.Tables;
 namespace MyNoSqlServer.Domains.SnapshotSaver
 {
 
-    public class SyncPartition
+
+    public interface ISyncTask
+    {
+        DateTime SyncDateTime { get; }
+    }
+    
+    public class SyncPartition : ISyncTask
     {
         public DbTable DbTable { get; private set; }
         public DbPartition DbPartition { get; set; }
+        
+        public DateTime SyncDateTime { get; } = DateTime.UtcNow.AddSeconds(1);
 
         public static SyncPartition Create(DbTable dbTable, DbPartition dbPartition)
         {
@@ -20,12 +28,16 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 DbPartition = dbPartition
             };
         }
+
+
     }
     
     
-    public class SyncTable
+    public class SyncTable: ISyncTask
     {
         public DbTable DbTable { get; private set; }
+        
+        public DateTime SyncDateTime { get; } = DateTime.UtcNow.AddSeconds(1);
 
         public static SyncTable Create(DbTable dbTable)
         {
@@ -34,12 +46,15 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 DbTable = dbTable
             };
         }
+        
     }
 
-    public class SyncDeletePartition
+    public class SyncDeletePartition: ISyncTask
     {
         public string TableName { get; private set; }
         public string PartitionKey { get; private set; }
+        
+        public DateTime SyncDateTime { get; } = DateTime.UtcNow.AddSeconds(1);
 
         public static SyncDeletePartition Create(string tableName, string partitionKey)
         {
@@ -49,18 +64,20 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 PartitionKey = partitionKey
             };
         }
+
+
     }
     
     public class QueueToSaveSnapshot
     {
-        private readonly Dictionary<string, List<object>> _queue = new Dictionary<string, List<object>>();
+        private readonly Dictionary<string, List<ISyncTask>> _queue = new Dictionary<string, List<ISyncTask>>();
 
-        private List<object> GetQueueForTable(string tableName)
+        private List<ISyncTask> GetQueueForTable(string tableName)
         {
             if (_queue.ContainsKey(tableName))
                 return _queue[tableName];
             
-            var queue = new List<object>();
+            var queue = new List<ISyncTask>();
             
               _queue.Add(tableName, queue);
 
@@ -69,7 +86,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
 
 
 
-        private bool HasSynchronizationTask<T>(List<object> queue, Func<T, bool> func)
+        private static bool HasSynchronizationTask<T>(List<ISyncTask> queue, Func<T, bool> func) where T:ISyncTask
         {
             foreach (var item in queue)
             {
@@ -127,30 +144,42 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             }
         }
 
+
+        private void CollectGarbage()
+        {
+            if (_queue.Count <= 0) return;
+            
+            var emptyElements = _queue.Where(itm => itm.Value.Count == 0).ToList();
+            foreach (var emptyElement in emptyElements)
+                _queue.Remove(emptyElement.Key);
+        }
         public object Dequeue()
         {
+
+            var dt = DateTime.UtcNow;
             lock (_queue)
             {
-                if (_queue.Count == 0)
-                    return null;
-
-                var queueGroup = _queue.First();
-
-                var queue = queueGroup.Value;
-
-                if (queue.Count == 0)
-                    return null;
-                
-                var result = queue[0];
-                
-                queue.RemoveAt(0);
-
-                if (queue.Count == 0)
-                    _queue.Remove(queueGroup.Key);
-
-
-                return result;
+                try
+                {
+                    foreach (var subQueue in _queue)
+                    {
+                        for (var i = 0; i < subQueue.Value.Count; i++)
+                        {
+                            if (dt < subQueue.Value[i].SyncDateTime) 
+                                continue;
+                            
+                            var result = subQueue.Value[i];
+                            subQueue.Value.RemoveAt(i);
+                            return result;
+                        }
+                    }
+                }
+                finally
+                {
+                    CollectGarbage();
+                }
             }
+            return null;
         }
         
         
