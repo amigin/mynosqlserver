@@ -449,7 +449,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 if (string.IsNullOrEmpty(partitionKey))
                     return _partitions.Sum(itm => itm.Value.GetRecordsCount());
 
-                return _partitions.ContainsKey(partitionKey) ? _partitions.Count : 0;
+                return _partitions.ContainsKey(partitionKey) ? _partitions[partitionKey].GetRecordsCount() : 0;
             }
             finally
             {
