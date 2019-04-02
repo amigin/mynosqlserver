@@ -157,6 +157,25 @@ namespace MyNoSqlServer.Api.Controllers
             
             return this.ResponseOk();
         }
+        
+        [HttpGet("Count")]
+        public IActionResult Count([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey)
+        {
+            if (string.IsNullOrEmpty(tableName))
+                return this.TableNameIsNull();
+
+            if (string.IsNullOrEmpty(partitionKey))
+                return this.PartitionKeyIsNull();
+            
+            var table = DbInstance.GetTable(tableName);
+
+            if (table == null)
+                return this.TableNotFound(tableName);
+
+            var count = table.GetRecordsCount(partitionKey);
+
+            return Content(count.ToString());
+        }
 
     }
 }

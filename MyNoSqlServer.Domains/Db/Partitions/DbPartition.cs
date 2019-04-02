@@ -147,6 +147,10 @@ namespace MyNoSqlServer.Domains.Db.Partitions
 
             return result;
         }
-        
+
+        public int GetRecordsCount()
+        {
+            return _rows.Count;
+        }
     }
 }

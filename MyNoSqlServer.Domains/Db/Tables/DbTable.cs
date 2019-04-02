@@ -441,5 +441,20 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
+        public int GetRecordsCount(string partitionKey)
+        {
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                if (string.IsNullOrEmpty(partitionKey))
+                    return _partitions.Sum(itm => itm.Value.GetRecordsCount());
+
+                return _partitions.ContainsKey(partitionKey) ? _partitions.Count : 0;
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
+        }
     }
 }
