@@ -159,7 +159,7 @@ namespace MyNoSqlServer.Api.Controllers
         }
         
         [HttpGet("Count")]
-        public IActionResult Count([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey)
+        public IActionResult Count([Required][FromQuery] string tableName, [FromQuery] string partitionKey)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();

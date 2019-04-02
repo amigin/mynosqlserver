@@ -148,6 +148,13 @@ namespace MyNoSqlServer.Domains.Db.Partitions
             return result;
         }
 
+        public IReadOnlyList<DbRow> GetRows(string[] rowKeys)
+        {
+            return (from rowKey in rowKeys 
+                where _rows.ContainsKey(rowKey) 
+                select _rows[rowKey]).ToList();
+        }
+
         public int GetRecordsCount()
         {
             return _rows.Count;

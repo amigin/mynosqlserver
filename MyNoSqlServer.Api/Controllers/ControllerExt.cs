@@ -8,10 +8,7 @@ namespace MyNoSqlServer.Api.Controllers
 {
     public static class ControllerExt
     {
-
         private const string AppJsonContentType = "application/json";
-
-
         public static IActionResult ToDbRowResult(this Controller ctx, DbRow dbRow)
         {
             return ctx.File(dbRow.Data, AppJsonContentType);
@@ -30,6 +27,5 @@ namespace MyNoSqlServer.Api.Controllers
             request.Body.CopyTo(memArray);
             return memArray.ToArray();
         }
-        
     }
 }

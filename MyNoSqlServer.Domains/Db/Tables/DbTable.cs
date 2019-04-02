@@ -456,5 +456,25 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 ReaderWriterLockSlim.ExitReadLock();
             }
         }
+
+        public IReadOnlyList<DbRow> GetMultipleRows(string partitionKey, string[] rowKeys)
+        {
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                if (string.IsNullOrEmpty(partitionKey))
+                    return Array.Empty<DbRow>();
+                
+                if (!_partitions.ContainsKey(partitionKey))
+                    return Array.Empty<DbRow>();
+
+                return _partitions[partitionKey].GetRows(rowKeys);
+                
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
+        }
     }
 }
