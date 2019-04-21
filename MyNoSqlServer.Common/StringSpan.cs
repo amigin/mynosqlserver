@@ -1,6 +1,6 @@
 using System;
 
-namespace Common
+namespace MyNoSqlServer.Common
 {
     public class StringSpan
     {

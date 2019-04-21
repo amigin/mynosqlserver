@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <Authors>Andrey Migin</Authors>
+        <Description>Access to MyNoSqlServer</Description>
+        <Copyright>MIT</Copyright>
+        <PackageProjectUrl>https://github.com/amigin/mynosqlserver</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/amigin/mynosqlserver</RepositoryUrl>
+        <RepositoryType>GIT</RepositoryType>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageVersion>1.0.0-preview4</PackageVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Flurl.Http" Version="2.4.1" />
+      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="3.0.0-preview4-19216-03" />
+    </ItemGroup>
+
+</Project>

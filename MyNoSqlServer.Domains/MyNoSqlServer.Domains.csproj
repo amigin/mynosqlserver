@@ -7,7 +7,7 @@
 
     <ItemGroup>
       <PackageReference Include="Flurl.Http">
-        <Version>2.4.0</Version>
+        <Version>2.4.1</Version>
       </PackageReference>
       <PackageReference Include="System.Threading.Tasks.Dataflow">
         <Version>4.10.0-preview4.19212.13</Version>
@@ -18,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Common\Common.csproj" />
+      <ProjectReference Include="..\MyNoSqlServer.Common\MyNoSqlServer.Common.csproj" />
     </ItemGroup>
 
 </Project>

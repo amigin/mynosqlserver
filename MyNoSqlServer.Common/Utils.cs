@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Common
+namespace MyNoSqlServer.Common
 {
     public static class Utils
     {
