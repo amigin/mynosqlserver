@@ -38,7 +38,7 @@ namespace MyNoSqlServer.Api.Controllers
             return this.ResponseConflict("Can not create table: " + tableName);
         }
         
-        [HttpPost("Tables/Clean")]
+        [HttpDelete("Tables/Clean")]
         public IActionResult Clean([Required][FromQuery]string tableName)
         {
             if (string.IsNullOrEmpty(tableName))
@@ -54,7 +54,7 @@ namespace MyNoSqlServer.Api.Controllers
             ServiceLocator.SnapshotSaverEngine.SynchronizeTable(table);
             ServiceLocator.Synchronizer.ChangesPublisher.PublishInitTable(table);
             
-            return this.ResponseConflict("Can not create table: " + tableName);
+            return Ok();
         }
     }
 }

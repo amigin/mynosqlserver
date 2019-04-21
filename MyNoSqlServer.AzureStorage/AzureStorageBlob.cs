@@ -74,12 +74,11 @@ namespace MyNoSqlServer.AzureStorage
             
         }
 
-        public async Task<IEnumerable<PartitionSnapshot>> LoadSnapshotsAsync()
+        public async Task LoadSnapshotsAsync(Action<PartitionSnapshot> callback)
         {
         
             const string ignoreContainerName = "nosqlsnapshots";
 
-            var result = new List<PartitionSnapshot>();
             var containers = await _storageAccount.GetListOfContainersAsync();
 
             foreach (var container in containers.Where(c => c.Name != ignoreContainerName))
@@ -97,15 +96,15 @@ namespace MyNoSqlServer.AzureStorage
                         PartitionKey = blockBlob.Name.Base64ToString(),
                         Snapshot =  memoryStream.ToArray()
                     };
+
+                    callback(snapshot);
                     
-                    result.Add(snapshot);
                     
                     Console.WriteLine("Loaded snapshot: "+snapshot);
                 }
            
             }
 
-            return result;
         }
     }
     

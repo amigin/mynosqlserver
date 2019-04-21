@@ -18,33 +18,33 @@ namespace MyNoSqlServer.Api.Controllers
 
         public static IActionResult TableNameIsNull(this Controller ctx)
         {
-            return ctx.Conflict("Please specify table name");
+            return ctx.NotFound("Please specify table name");
         }
 
         public static IActionResult QueryIsNull(this Controller ctx)
         {
-            return ctx.Conflict("Please specify query as body json field");
+            return ctx.NotFound("Please specify query as body json field");
         }
 
 
         public static IActionResult TableNotFound(this Controller ctx, string tableName)
         {
-            return ctx.StatusCode(204,$"Table {tableName} name");
+            return ctx.NotFound($"Table {tableName} not found");
         }
 
         public static IActionResult PartitionKeyIsNull(this Controller ctx)
         {
-            return ctx.StatusCode(204,"Please specify PartitionKey");
+            return ctx.NotFound("Please specify PartitionKey");
         }
 
         public static IActionResult RowKeyIsNull(this Controller ctx)
         {
-            return ctx.StatusCode(204,"Please specify RowKey");
+            return ctx.NotFound("Please specify RowKey");
         }
 
         public static IActionResult RowNotFound(this Controller ctx, string tableName, string partitionKey, string rowKey)
         {
-            return ctx.StatusCode(204, $"Entity with PartitionKey={partitionKey} and RowKey={rowKey} at table={tableName} is not found");
+            return ctx.StatusCode(204);
         }
 
 

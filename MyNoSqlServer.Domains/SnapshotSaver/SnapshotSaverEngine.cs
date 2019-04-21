@@ -50,7 +50,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
 
         Task DeleteTablePartitionAsync(string tableName, string partitionKey);
         
-        Task<IEnumerable<PartitionSnapshot>> LoadSnapshotsAsync();
+        Task LoadSnapshotsAsync(Action<PartitionSnapshot> callback);
         
     }
     
@@ -84,8 +84,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
         private async Task LoadSnapshotsAsync()
         {
 
-            var snapshots = await _snapshotInfrastructure.LoadSnapshotsAsync();
-            foreach (var snapshot in snapshots)
+            await _snapshotInfrastructure.LoadSnapshotsAsync(snapshot =>
             {
                 try
                 {
@@ -94,10 +93,11 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Snapshots {snapshot.TableName}/{snapshot.PartitionKey} could not be loaded: " + e.Message);
+                    Console.WriteLine($"Snapshots {snapshot.TableName}/{snapshot.PartitionKey} could not be loaded: " +
+                                      e.Message);
                 }
 
-            }
+            });
 
         }
 
