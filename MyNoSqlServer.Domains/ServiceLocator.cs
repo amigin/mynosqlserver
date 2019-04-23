@@ -6,15 +6,13 @@ namespace MyNoSqlServer.Domains
     public static class ServiceLocator
     {
 
+        public static ISnapshotStorage SnapshotStorage;
         
-        public static ISnapshotSaverEngine SnapshotSaverEngine { get; set; }
+        public static IReplicaSynchronizationService DataSynchronizer;
         
-        public static class Synchronizer
-        {
-            public static IChangesPublisher ChangesPublisher { get; set; }
-            
-        }
+        public static readonly SnapshotSaverEngine SnapshotSaverEngine = new SnapshotSaverEngine();
         
-        
+        public static ISnapshotSaverScheduler SnapshotSaverScheduler = new SnapshotSaverScheduler();
+
     }
 }

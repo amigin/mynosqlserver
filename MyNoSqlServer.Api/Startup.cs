@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MyNoSqlServer.Api.Hubs;
@@ -63,7 +62,10 @@ namespace MyNoSqlServer.Api
             
             settings.BackupAzureConnectString.BindAzureStorage();
 
-            ServiceLocator.Synchronizer.ChangesPublisher = new ChangesPublisherToSignalR();
+            ServiceLocator.DataSynchronizer = new ChangesPublisherToSignalR();
+            
+            
+            ServiceLocator.SnapshotSaverEngine.Start();
 
         }
 
@@ -101,14 +103,10 @@ namespace MyNoSqlServer.Api
             app.UseMvc();
             
             
-
-            
             app.UseSignalR(routes =>
             {
                 routes.MapHub<ChangesHub>("/changes");
             });
-            
-            
 
             
         }

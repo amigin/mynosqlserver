@@ -113,7 +113,6 @@ namespace MyNoSqlClient
             {
                 hubConnection.On<string, byte[]>(tableName, (action, data) =>
                 {
-
                     _lastIncomingDateTime = DateTime.UtcNow;
 
                     switch (action)
@@ -121,22 +120,21 @@ namespace MyNoSqlClient
                         case "i":
                             HandleInitEvent(tableName, data);
                             break;
-
                         case "u":
                             HandleUpdateEvent(tableName, data);
                             break;
-
                         case "d":
                             HandleDeleteEvent(tableName, data);
                             break;
-
                         default:
+                        {
                             if (action.StartsWith("i:"))
                                 HandleInitPartitionEvent(tableName, action.Substring(2, action.Length - 2), data);
                             break;
+                        }
                     }
-
                 });
+                
 
                 Console.WriteLine("Subscribed to MyNoSql Server table: " + tableName);
                 await hubConnection.SendAsync("Subscribe", tableName);

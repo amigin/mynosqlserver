@@ -9,7 +9,7 @@
         <RepositoryUrl>https://github.com/amigin/mynosqlserver</RepositoryUrl>
         <RepositoryType>GIT</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>1.0.6-preview4</PackageVersion>
+        <PackageVersion>1.0.7-preview4</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>

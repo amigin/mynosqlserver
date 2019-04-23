@@ -5,14 +5,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using MyNoSqlServer.Common;
+using MyNoSqlServer.Domains.DataSynchronization;
 using MyNoSqlServer.Domains.Db.Rows;
 using MyNoSqlServer.Domains.Db.Tables;
-using MyNoSqlServer.Domains.SnapshotSaver;
 
 namespace MyNoSqlServer.AzureStorage
 {
     
-    public class AzureStorageBlob : ISnapshotInfrastructure
+    public class AzureStorageBlob : ISnapshotStorage
     {
         private readonly CloudStorageAccount _storageAccount;
 
@@ -74,12 +74,14 @@ namespace MyNoSqlServer.AzureStorage
             
         }
 
-        public async Task LoadSnapshotsAsync(Action<PartitionSnapshot> callback)
+        public async Task LoadSnapshotsAsync(Action<IEnumerable<string>> tablesCallback, Action<PartitionSnapshot> callback)
         {
         
             const string ignoreContainerName = "nosqlsnapshots";
 
             var containers = await _storageAccount.GetListOfContainersAsync();
+
+            tablesCallback(containers.Select(itm => itm.Name).Where(name => name != ignoreContainerName));
 
             foreach (var container in containers.Where(c => c.Name != ignoreContainerName))
             {

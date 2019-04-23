@@ -10,7 +10,8 @@ namespace MyNoSqlServer.Api.Controllers
     {
         
         [HttpPost("Rows/SinglePartitionMultipleRows")]
-        public IActionResult SinglePartitionMultipleRows([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey, [Required][FromBody] string[] rowKeys)
+        public IActionResult SinglePartitionMultipleRows([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey,
+            [Required][FromBody] string[] rowKeys)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();

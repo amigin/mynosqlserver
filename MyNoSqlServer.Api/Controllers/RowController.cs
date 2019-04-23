@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using MyNoSqlServer.Api.Models;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
 
@@ -48,7 +49,8 @@ namespace MyNoSqlServer.Api.Controllers
         }
 
         [HttpPost("Row/Insert")]
-        public IActionResult InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body)
+        public IActionResult InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+            [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -71,15 +73,16 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (dbPartition != null)
             {
-                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
-                ServiceLocator.Synchronizer.ChangesPublisher?.SynchronizeUpdate(table, new[]{dbRow});
+                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+                ServiceLocator.DataSynchronizer?.SynchronizeUpdate(table, new[]{dbRow});
             }
 
             return dbPartition != null ? this.ResponseOk() : this.ResponseConflict("Can not insert entity");
         }
         
         [HttpPost("Row/InsertOrReplace")]
-        public IActionResult InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body)
+        public IActionResult InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+            [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -95,15 +98,16 @@ namespace MyNoSqlServer.Api.Controllers
             var data = Request.BodyAsByteArray();
             var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
             
-            ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
-            ServiceLocator.Synchronizer.ChangesPublisher?.SynchronizeUpdate(table, new[]{dbRow});
+            ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+            ServiceLocator.DataSynchronizer?.SynchronizeUpdate(table, new[]{dbRow});
 
             return this.ResponseOk();
         }
 
         [HttpDelete("Row")]
         public IActionResult Delete([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey,
-            [Required][FromQuery] string rowKey)
+            [Required][FromQuery] string rowKey, 
+            [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -124,8 +128,8 @@ namespace MyNoSqlServer.Api.Controllers
             if (dbPartition == null) 
                 return this.RowNotFound(tableName, partitionKey, rowKey);
             
-            ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
-            ServiceLocator.Synchronizer.ChangesPublisher.SynchronizeDelete(table, new[]{dbRow});
+            ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+            ServiceLocator.DataSynchronizer.SynchronizeDelete(table, new[]{dbRow});
             
             return this.ResponseOk();
 
@@ -133,7 +137,9 @@ namespace MyNoSqlServer.Api.Controllers
 
         
         [HttpDelete("CleanAndKeepLastRecords")]
-        public IActionResult CleanAndKeepLastRecords([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey, [Required][FromQuery] int amount)
+        public IActionResult CleanAndKeepLastRecords([Required][FromQuery] string tableName, 
+            [Required][FromQuery] string partitionKey, [Required][FromQuery] int amount, 
+            [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -151,8 +157,8 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (dbPartition != null)
             {
-                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
-                ServiceLocator.Synchronizer.ChangesPublisher.SynchronizeDelete(table, dbRows);
+                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+                ServiceLocator.DataSynchronizer.SynchronizeDelete(table, dbRows);
             }
             
             return this.ResponseOk();

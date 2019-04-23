@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using MyNoSqlServer.Api.Models;
 using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
@@ -15,7 +16,8 @@ namespace MyNoSqlServer.Api.Controllers
     public class BulkController : Controller
     {
         [HttpPost]
-        public IActionResult InsertOrReplace([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body)
+        public IActionResult InsertOrReplace([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body, 
+            [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -27,9 +29,9 @@ namespace MyNoSqlServer.Api.Controllers
             var (dbPartitions, dbRows) = table.BulkInsertOrReplace(entitiesToInsert);
 
             foreach (var dbPartition in dbPartitions)
-                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
+                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
 
-            ServiceLocator.Synchronizer.ChangesPublisher?.SynchronizeUpdate(table, dbRows);
+            ServiceLocator.DataSynchronizer?.SynchronizeUpdate(table, dbRows);
             
             return this.ResponseOk();
 
@@ -38,30 +40,33 @@ namespace MyNoSqlServer.Api.Controllers
 
 
 
-        private static void CleanPartitionAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, string partitionKey)
+        private static void CleanPartitionAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, string partitionKey, 
+            [FromQuery]string syncPeriod)
         {
             var partitionsToSynchronize = table.CleanAndBulkInsert(partitionKey, entitiesToInsert);
 
             foreach (var dbPartition in partitionsToSynchronize)
             {
-                ServiceLocator.SnapshotSaverEngine.SynchronizePartition(table, dbPartition);
-                ServiceLocator.Synchronizer.ChangesPublisher?.PublishInitPartition(table, dbPartition); 
+                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+                ServiceLocator.DataSynchronizer?.PublishInitPartition(table, dbPartition); 
             }
         }
         
         
-        private static void CleanTableAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert)
+        private static void CleanTableAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, 
+            [FromQuery]string syncPeriod)
         {
             table.CleanAndBulkInsert(entitiesToInsert);
             
-            ServiceLocator.SnapshotSaverEngine.SynchronizeTable(table);
-            ServiceLocator.Synchronizer.ChangesPublisher?.PublishInitTable(table);
+            ServiceLocator.SnapshotSaverScheduler.SynchronizeTable(table, syncPeriod.ParseSynchronizationPeriod());
+            ServiceLocator.DataSynchronizer?.PublishInitTable(table);
         }
 
 
         [HttpPost]
         public IActionResult CleanAndBulkInsert([Required] [FromQuery] string tableName,
-            [FromQuery] string partitionKey, [Required] [FromBody] MyNoSqlDbEntity[] body)
+            [FromQuery] string partitionKey, [Required] [FromBody] MyNoSqlDbEntity[] body, 
+            [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
@@ -70,9 +75,9 @@ namespace MyNoSqlServer.Api.Controllers
             var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
 
             if (string.IsNullOrEmpty(partitionKey))
-                CleanTableAndBulkInsert(table, entitiesToInsert);
+                CleanTableAndBulkInsert(table, entitiesToInsert, syncPeriod);
             else
-                CleanPartitionAndBulkInsert(table, entitiesToInsert, partitionKey);
+                CleanPartitionAndBulkInsert(table, entitiesToInsert, partitionKey, syncPeriod);
 
             return this.ResponseOk();
         }

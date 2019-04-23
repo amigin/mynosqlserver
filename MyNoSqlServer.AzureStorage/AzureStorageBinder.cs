@@ -10,10 +10,7 @@ namespace MyNoSqlServer.AzureStorage
             if (string.IsNullOrEmpty(connectionString))
                 return;
 
-            var storageBlob = new AzureStorageBlob(connectionString);
-            SnapshotSaverEngine.Instance = new SnapshotSaverEngine(storageBlob);
-            ServiceLocator.SnapshotSaverEngine = SnapshotSaverEngine.Instance;
-            SnapshotSaverEngine.Instance.Start();
+            ServiceLocator.SnapshotStorage = new AzureStorageBlob(connectionString);
         }
     }
     

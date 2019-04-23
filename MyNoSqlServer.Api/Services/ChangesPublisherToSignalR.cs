@@ -7,9 +7,8 @@ using MyNoSqlServer.Domains.Db.Tables;
 
 namespace MyNoSqlServer.Api.Services
 {
-    public class ChangesPublisherToSignalR : IChangesPublisher
+    public class ChangesPublisherToSignalR : IReplicaSynchronizationService
     {
-
 
         public void PublishInitTable(DbTable dbTable)
         {

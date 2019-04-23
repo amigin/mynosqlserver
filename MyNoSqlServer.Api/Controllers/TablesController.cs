@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using MyNoSqlServer.Api.Models;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
 
@@ -39,7 +40,7 @@ namespace MyNoSqlServer.Api.Controllers
         }
         
         [HttpDelete("Tables/Clean")]
-        public IActionResult Clean([Required][FromQuery]string tableName)
+        public IActionResult Clean([Required][FromQuery]string tableName, [FromQuery]string syncPeriod)
         {
             if (string.IsNullOrEmpty(tableName))
                 return this.ResponseConflict("Please specify table name");
@@ -51,8 +52,8 @@ namespace MyNoSqlServer.Api.Controllers
 
             table.Clean();
             
-            ServiceLocator.SnapshotSaverEngine.SynchronizeTable(table);
-            ServiceLocator.Synchronizer.ChangesPublisher.PublishInitTable(table);
+            ServiceLocator.SnapshotSaverScheduler.SynchronizeTable(table, syncPeriod.ParseSynchronizationPeriod());
+            ServiceLocator.DataSynchronizer.PublishInitTable(table);
             
             return Ok();
         }

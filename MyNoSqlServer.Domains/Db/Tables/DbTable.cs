@@ -63,9 +63,9 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
-        public void InitPartitionFromSnapshot(string partitionKey, byte[] data)
+        public DbPartition InitPartitionFromSnapshot(string partitionKey, byte[] data)
         {
-            
+            DbPartition partition = null;
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
@@ -79,22 +79,30 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     
                     if (entityInfo.PartitionKey != partitionKey)
                         continue;
-                    
+
                     if (!_partitions.ContainsKey(entityInfo.PartitionKey))
-                        _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
-                    
-                    var partition = _partitions[entityInfo.PartitionKey];
+                    {
+                        partition = DbPartition.Create(entityInfo.PartitionKey);
+                        _partitions.Add(entityInfo.PartitionKey, partition);
+                    }
+
+                    if (partition == null)
+                        partition = _partitions[entityInfo.PartitionKey];
                     
                     var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, array);
 
                     partition.InsertOrReplace(dbRow);
-                   
+
                 }
+                
+                
             }
             finally
             {
                 ReaderWriterLockSlim.ExitWriteLock();
             }
+            
+            return partition;
 
         }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -94,7 +95,6 @@ namespace MyNoSqlServer.AzureStorage
 
             await blob.UploadFromByteArrayAsync(data, 0, data.Length);
         }
-        
         
         internal static async Task DeleteBlobAsync(this CloudBlob blob)
         {

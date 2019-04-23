@@ -1,115 +1,50 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+using MyNoSqlServer.Domains.DataSynchronization;
 using MyNoSqlServer.Domains.Db;
-using MyNoSqlServer.Domains.Db.Partitions;
 using MyNoSqlServer.Domains.Db.Rows;
-using MyNoSqlServer.Domains.Db.Tables;
 
 namespace MyNoSqlServer.Domains.SnapshotSaver
 {
-
-    public class PartitionSnapshot
-    {
-        public string TableName { get; set; }
-        public string PartitionKey { get; set; }
-        public byte[] Snapshot { get; set; }
-
-        public static PartitionSnapshot Create(string tableName, string partitionKey, byte[] snapshot)
-        {
-            return new PartitionSnapshot
-            {
-                TableName = tableName,
-                PartitionKey = partitionKey,
-                Snapshot = snapshot
-            };
-        }
-
-
-        public override string ToString()
-        {
-            return TableName + "/" + PartitionKey;
-        }
-    }
-
-    public interface ISnapshotSaverEngine
-    {
-        void SynchronizePartition(DbTable dbTable, DbPartition partitionToSave);
-        
-        void SynchronizeTable(DbTable dbTable);
-        
-        void SynchronizeDeletePartition(string tableName, string partitionKey);
-    }
-
-
-
-    public interface ISnapshotInfrastructure
-    {
-        Task SavePartitionSnapshotAsync(PartitionSnapshot partitionSnapshot);
-        Task SaveTableSnapshotAsync(DbTable dbTable);
-
-        Task DeleteTablePartitionAsync(string tableName, string partitionKey);
-        
-        Task LoadSnapshotsAsync(Action<PartitionSnapshot> callback);
-        
-    }
     
-    public class SnapshotSaverEngine : ISnapshotSaverEngine
+    public class SnapshotSaverEngine 
     {
-        private readonly ISnapshotInfrastructure _snapshotInfrastructure;
-
-        private readonly QueueToSaveSnapshot _queueToSaveSnapshot = new QueueToSaveSnapshot();
-
-        public void SynchronizePartition(DbTable dbTable, DbPartition partitionToSave)
+        private static async Task LoadSnapshotsAsync()
         {
-            _queueToSaveSnapshot.Enqueue(dbTable, partitionToSave);
-        }
-
-        public void SynchronizeTable(DbTable tableName)
-        {
-            _queueToSaveSnapshot.Enqueue(tableName);
-        }
-
-        public void SynchronizeDeletePartition(string tableName, string partitionKey)
-        {
-            _queueToSaveSnapshot.EnqueueDeletePartition(tableName, partitionKey);
-        }
-
-
-        public SnapshotSaverEngine(ISnapshotInfrastructure snapshotInfrastructure)
-        {
-            _snapshotInfrastructure = snapshotInfrastructure;
-        }
-
-        private async Task LoadSnapshotsAsync()
-        {
-
-            await _snapshotInfrastructure.LoadSnapshotsAsync(snapshot =>
-            {
-                try
+            await ServiceLocator.SnapshotStorage.LoadSnapshotsAsync(tables =>
                 {
-                    var table = DbInstance.CreateTableIfNotExists(snapshot.TableName);
-                    table.InitPartitionFromSnapshot(snapshot.PartitionKey, snapshot.Snapshot);
-                }
-                catch (Exception e)
+                    foreach (var table in tables)
+                        DbInstance.CreateTableIfNotExists(table);
+                },
+
+                snapshot =>
                 {
-                    Console.WriteLine($"Snapshots {snapshot.TableName}/{snapshot.PartitionKey} could not be loaded: " +
-                                      e.Message);
-                }
+                    try
+                    {
+                        var table = DbInstance.CreateTableIfNotExists(snapshot.TableName);
+                        var partition = table.InitPartitionFromSnapshot(snapshot.PartitionKey, snapshot.Snapshot);
 
-            });
+                        if (partition != null)
+                            ServiceLocator.DataSynchronizer.PublishInitPartition(table, partition);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(
+                            $"Snapshots {snapshot.TableName}/{snapshot.PartitionKey} could not be loaded: " +
+                            e.Message);
+                    }
 
+                });
         }
 
         public async void TheLoop()
         {
-
             await LoadSnapshotsAsync();
             
             while (true)
                 try
                 {
-                    var elementToSave = _queueToSaveSnapshot.Dequeue();
+                    var elementToSave = ServiceLocator.SnapshotSaverScheduler.GetTaskToSync();
 
                     while (elementToSave != null)
                     {
@@ -117,25 +52,24 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                         {
                             
                             case SyncTable syncTable:
-                                await _snapshotInfrastructure.SaveTableSnapshotAsync(syncTable.DbTable);
+                                await ServiceLocator.SnapshotStorage.SaveTableSnapshotAsync(syncTable.DbTable);
                                 break;
                             
                             case SyncPartition syncPartition:
                                 
                                 var dbRowsAsByteArray = syncPartition.DbPartition.GetAllRows().ToJsonArray().AsArray();
                                 var partitionSnapshot = PartitionSnapshot.Create(syncPartition.DbTable.Name, syncPartition.DbPartition.PartitionKey, dbRowsAsByteArray);
-                                await _snapshotInfrastructure.SavePartitionSnapshotAsync(partitionSnapshot);
-                                
+                                await ServiceLocator.SnapshotStorage.SavePartitionSnapshotAsync(partitionSnapshot);
                                 break;
                             
                             case SyncDeletePartition syncDeletePartition:
-                                await _snapshotInfrastructure.DeleteTablePartitionAsync(syncDeletePartition.TableName,
+                                await ServiceLocator.SnapshotStorage.DeleteTablePartitionAsync(syncDeletePartition.TableName,
                                     syncDeletePartition.PartitionKey);
                                 break;
                             
                         }
 
-                        elementToSave = _queueToSaveSnapshot.Dequeue();
+                        elementToSave = ServiceLocator.SnapshotSaverScheduler.GetTaskToSync();
                     }
 
                 }
@@ -153,9 +87,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
         {
             TheLoop();
         }
-
-        public static SnapshotSaverEngine Instance;
-
+        
     }
     
 }

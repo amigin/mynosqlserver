@@ -7,9 +7,7 @@ namespace MyNoSqlServer.Api
     public class SettingsModel
     {
         public string BackupAzureConnectString { get; set; }
-
     }
-
 
     public static class SettingsLoader
     {
@@ -32,6 +30,6 @@ namespace MyNoSqlServer.Api
 
             return result;
         }
-
     }
+    
 }

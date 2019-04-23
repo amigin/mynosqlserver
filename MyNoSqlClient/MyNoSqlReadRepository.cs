@@ -36,8 +36,6 @@ namespace MyNoSqlClient
                         dict[item.RowKey] = item;
                     else
                         dict.Add(item.RowKey, item);
-
-
                 }
 
             }
