@@ -6,19 +6,6 @@ using System.Threading;
 namespace MyNoSqlClient
 {
 
-    public interface IMyNoSqlReadRepository<out T> where T : IMyNoSqlTableEntity
-    {
-        T Get(string partitionKey, string rowKey);
-        IReadOnlyList<T> Get(string partitionKey);
-        IReadOnlyList<T> Get(Func<T, bool> condition = null);
-        
-        int Count();
-
-
-        void SubscribeToChanges(Action<IReadOnlyList<T>> changed);
-
-    }
-    
     public class MyNoSqlReadRepository<T> : IMyNoSqlReadRepository<T> where T:IMyNoSqlTableEntity
     {
         
@@ -194,6 +181,57 @@ namespace MyNoSqlClient
 
         }
 
+        public IReadOnlyList<T> Get(string partitionKey, int skip, int take)
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (!_cache.ContainsKey(partitionKey))
+                    return Array.Empty<T>();
+
+                return _cache[partitionKey].Values.Skip(skip).Take(take).ToList();
+
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
+        public IReadOnlyList<T> Get(string partitionKey, int skip, int take, Func<T, bool> condition)
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (!_cache.ContainsKey(partitionKey))
+                    return Array.Empty<T>();
+
+                return _cache[partitionKey].Values.Where(condition).Skip(skip).Take(take).ToList();
+
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
+        public IReadOnlyList<T> Get(string partitionKey, Func<T, bool> condition)
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (!_cache.ContainsKey(partitionKey))
+                    return Array.Empty<T>();
+
+                return _cache[partitionKey].Values.Where(condition).ToList();
+
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
         public IReadOnlyList<T> Get(Func<T, bool> condition = null)
         {
 
@@ -237,6 +275,34 @@ namespace MyNoSqlClient
             }
 
             return result;
+        }
+
+        public int Count(string partitionKey)
+        {
+            _lock.EnterReadLock();
+
+            try
+            {
+                return _cache.ContainsKey(partitionKey) ? _cache[partitionKey].Count : 0;
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+
+        }
+
+        public int Count(string partitionKey, Func<T, bool> condition)
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                return _cache.ContainsKey(partitionKey) ? _cache[partitionKey].Values.Count(condition) : 0;
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
         }
 
 

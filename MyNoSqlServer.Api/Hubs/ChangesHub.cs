@@ -139,6 +139,11 @@ namespace MyNoSqlServer.Api.Hubs
             await Clients.Caller.SendAsync(tableName, "i", dataToSend);
         }
 
+        public async Task Ping()
+        {
+            await Clients.Caller.SendAsync("system", "heartbeat");
+        }
+
     }
 
 
