@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using MyNoSqlServer.Domains.Db.Partitions;
 using MyNoSqlServer.Domains.Db.Tables;
 
@@ -76,6 +77,17 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
         private readonly Dictionary<string, Dictionary<string, SyncDeletePartition>> _deletePartitions 
             = new Dictionary<string, Dictionary<string, SyncDeletePartition>>();
 
+        
+        public int TasksToSyncCount()
+        {
+            lock (_lockObject)
+            {
+                return _syncTables.Count +
+                       _syncPartitions.Values.Sum(i => i.Count) +
+                       _deletePartitions.Values.Sum(i => i.Count);
+            }
+        }
+        
         public void SynchronizeTable(DbTable dbTable, DataSynchronizationPeriod period)
         {
             lock (_lockObject)
@@ -171,10 +183,10 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
             return null;
         }
         
-        public ISyncTask GetTaskToSync()
+        public ISyncTask GetTaskToSync(bool appIsShuttingDown)
         {
 
-            var dt = DateTime.UtcNow;
+            var dt = appIsShuttingDown ? DateTime.UtcNow.AddYears(20) : DateTime.UtcNow;
             lock (_lockObject)
             {
 
@@ -202,7 +214,8 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
 
             }
         }
-        
+
+
     }
 
 

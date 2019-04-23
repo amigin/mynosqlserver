@@ -22,7 +22,10 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
         
         void SynchronizeDeletePartition(string tableName, string partitionKey, DataSynchronizationPeriod period);
 
-        ISyncTask GetTaskToSync();
+        ISyncTask GetTaskToSync(bool appIsShuttingDown);
+
+
+        int TasksToSyncCount();
 
     }
     

@@ -13,6 +13,7 @@ namespace MyNoSqlServer.Api.Controllers
         public IActionResult SinglePartitionMultipleRows([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey,
             [Required][FromBody] string[] rowKeys)
         {
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 

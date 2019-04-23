@@ -15,6 +15,7 @@ namespace MyNoSqlServer.Api.Controllers
         public IActionResult List([Required][FromQuery] string tableName, [FromQuery] string partitionKey,
             [FromQuery] string rowKey, [FromQuery] int? limit, [FromQuery] int? skip)
         {
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 
@@ -52,6 +53,10 @@ namespace MyNoSqlServer.Api.Controllers
         public IActionResult InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
             [FromQuery]string syncPeriod)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 
@@ -84,6 +89,11 @@ namespace MyNoSqlServer.Api.Controllers
         public IActionResult InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
             [FromQuery]string syncPeriod)
         {
+            
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 
@@ -109,6 +119,10 @@ namespace MyNoSqlServer.Api.Controllers
             [Required][FromQuery] string rowKey, 
             [FromQuery]string syncPeriod)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 
@@ -141,6 +155,10 @@ namespace MyNoSqlServer.Api.Controllers
             [Required][FromQuery] string partitionKey, [Required][FromQuery] int amount, 
             [FromQuery]string syncPeriod)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 

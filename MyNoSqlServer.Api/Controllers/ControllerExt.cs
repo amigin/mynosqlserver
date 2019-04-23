@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db.Rows;
 using MyNoSqlServer.Domains.SnapshotSaver;
 
@@ -27,6 +29,14 @@ namespace MyNoSqlServer.Api.Controllers
             request.Body.Position = 0;
             request.Body.CopyTo(memArray);
             return memArray.ToArray();
+        }
+
+        public static IActionResult CheckOnShuttingDown(this Controller ctx)
+        {
+            if (ServiceLocator.ShuttingDown)
+                return ctx.Conflict("Application is shutting down");
+            
+            return null;
         }
 
     }

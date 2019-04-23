@@ -37,14 +37,14 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 });
         }
 
-        public async void TheLoop()
+        public async Task TheLoop()
         {
             await LoadSnapshotsAsync();
             
-            while (true)
+            while (!_appIsShuttingDown || ServiceLocator.SnapshotSaverScheduler.TasksToSyncCount()>0)
                 try
                 {
-                    var elementToSave = ServiceLocator.SnapshotSaverScheduler.GetTaskToSync();
+                    var elementToSave = ServiceLocator.SnapshotSaverScheduler.GetTaskToSync(_appIsShuttingDown);
 
                     while (elementToSave != null)
                     {
@@ -69,7 +69,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                             
                         }
 
-                        elementToSave = ServiceLocator.SnapshotSaverScheduler.GetTaskToSync();
+                        elementToSave = ServiceLocator.SnapshotSaverScheduler.GetTaskToSync(_appIsShuttingDown);
                     }
 
                 }
@@ -80,12 +80,27 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                 finally
                 {
                     await Task.Delay(1000);
+                    
                 }
         }
 
+
+        private Task _theLoop;
+
+        private bool _appIsShuttingDown;
+
         public void Start()
         {
-            TheLoop();
+            _appIsShuttingDown = false;
+            _theLoop = TheLoop();
+        }
+
+
+        public void Stop()
+        {
+            Console.WriteLine("Shutting down sync tasks");
+            _appIsShuttingDown = true;
+            _theLoop.Wait();
         }
         
     }

@@ -19,6 +19,10 @@ namespace MyNoSqlServer.Api.Controllers
         public IActionResult InsertOrReplace([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body, 
             [FromQuery]string syncPeriod)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
             
@@ -37,12 +41,10 @@ namespace MyNoSqlServer.Api.Controllers
 
         }
 
-
-
-
         private static void CleanPartitionAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, string partitionKey, 
             [FromQuery]string syncPeriod)
         {
+            
             var partitionsToSynchronize = table.CleanAndBulkInsert(partitionKey, entitiesToInsert);
 
             foreach (var dbPartition in partitionsToSynchronize)
@@ -65,9 +67,13 @@ namespace MyNoSqlServer.Api.Controllers
 
         [HttpPost]
         public IActionResult CleanAndBulkInsert([Required] [FromQuery] string tableName,
-            [FromQuery] string partitionKey, [Required] [FromBody] MyNoSqlDbEntity[] body, 
-            [FromQuery]string syncPeriod)
+            [FromQuery] string partitionKey, [Required] [FromBody] MyNoSqlDbEntity[] body,
+            [FromQuery] string syncPeriod)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
 

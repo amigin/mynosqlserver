@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using MyNoSqlServer.Api.Hubs;
 using MyNoSqlServer.Api.Services;
 using MyNoSqlServer.AzureStorage;
@@ -70,7 +72,7 @@ namespace MyNoSqlServer.Api
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app)
+        public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime)
         {
             
             // Enable middleware to serve generated Swagger as a JSON endpoint.
@@ -84,6 +86,9 @@ namespace MyNoSqlServer.Api
      //       });            
 
             //app.UseHttpsRedirection();
+
+
+            applicationLifetime.ApplicationStopping.Register(OnShutdown);
             
             app.Use((context, next) =>
             {
@@ -109,6 +114,14 @@ namespace MyNoSqlServer.Api
             });
 
             
+        }
+
+        private void OnShutdown()
+        {
+            ServiceLocator.ShuttingDown = true;
+            Task.Delay(500);
+
+            ServiceLocator.SnapshotSaverEngine.Stop();
         }
     }
 }

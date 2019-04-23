@@ -20,6 +20,10 @@ namespace MyNoSqlServer.Api.Controllers
         [HttpPost("Tables/CreateIfNotExists")]
         public IActionResult CreateIfNotExists([Required][FromQuery]string tableName)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.ResponseConflict("Please specify table name");
             
@@ -30,6 +34,10 @@ namespace MyNoSqlServer.Api.Controllers
         [HttpPost("Tables/Create")]
         public IActionResult Create([Required][FromQuery]string tableName)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.ResponseConflict("Please specify table name");
 
@@ -42,6 +50,10 @@ namespace MyNoSqlServer.Api.Controllers
         [HttpDelete("Tables/Clean")]
         public IActionResult Clean([Required][FromQuery]string tableName, [FromQuery]string syncPeriod)
         {
+            var shutDown = this.CheckOnShuttingDown();
+            if (shutDown != null)
+                return shutDown;
+            
             if (string.IsNullOrEmpty(tableName))
                 return this.ResponseConflict("Please specify table name");
 
