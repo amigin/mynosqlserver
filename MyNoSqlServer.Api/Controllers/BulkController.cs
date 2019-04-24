@@ -7,6 +7,7 @@ using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
 using MyNoSqlServer.Domains.Db.Tables;
+using MyNoSqlServer.Domains.SnapshotSaver;
 
 namespace MyNoSqlServer.Api.Controllers
 {
@@ -25,6 +26,11 @@ namespace MyNoSqlServer.Api.Controllers
             
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
+
+            var theSyncPeriod = syncPeriod.ParseSynchronizationPeriod();
+
+            if (theSyncPeriod == DataSynchronizationPeriod.Immediately)
+                return Conflict("Bulk insert does not support immediate persistence");
             
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
@@ -32,35 +38,34 @@ namespace MyNoSqlServer.Api.Controllers
 
             var (dbPartitions, dbRows) = table.BulkInsertOrReplace(entitiesToInsert);
 
+            ServiceLocator.DataSynchronizer.SynchronizeUpdate(table, dbRows);
+            
             foreach (var dbPartition in dbPartitions)
-                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
-
-            ServiceLocator.DataSynchronizer?.SynchronizeUpdate(table, dbRows);
+                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, theSyncPeriod);
             
             return this.ResponseOk();
 
         }
 
         private static void CleanPartitionAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, string partitionKey, 
-            [FromQuery]string syncPeriod)
+            DataSynchronizationPeriod syncPeriod)
         {
-            
             var partitionsToSynchronize = table.CleanAndBulkInsert(partitionKey, entitiesToInsert);
 
             foreach (var dbPartition in partitionsToSynchronize)
             {
-                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod);
                 ServiceLocator.DataSynchronizer?.PublishInitPartition(table, dbPartition); 
             }
         }
         
         
         private static void CleanTableAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, 
-            [FromQuery]string syncPeriod)
+            DataSynchronizationPeriod syncPeriod)
         {
             table.CleanAndBulkInsert(entitiesToInsert);
             
-            ServiceLocator.SnapshotSaverScheduler.SynchronizeTable(table, syncPeriod.ParseSynchronizationPeriod());
+            ServiceLocator.SnapshotSaverScheduler.SynchronizeTable(table, syncPeriod);
             ServiceLocator.DataSynchronizer?.PublishInitTable(table);
         }
 
@@ -76,14 +81,20 @@ namespace MyNoSqlServer.Api.Controllers
 
             if (string.IsNullOrEmpty(tableName))
                 return this.TableNameIsNull();
+            
+            var theSyncPeriod = syncPeriod.ParseSynchronizationPeriod();
+
+            if (theSyncPeriod == DataSynchronizationPeriod.Immediately)
+                return Conflict("CleanAndBulkInsert insert does not support immediate persistence");
+
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
             var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
 
             if (string.IsNullOrEmpty(partitionKey))
-                CleanTableAndBulkInsert(table, entitiesToInsert, syncPeriod);
+                CleanTableAndBulkInsert(table, entitiesToInsert, theSyncPeriod);
             else
-                CleanPartitionAndBulkInsert(table, entitiesToInsert, partitionKey, syncPeriod);
+                CleanPartitionAndBulkInsert(table, entitiesToInsert, partitionKey, theSyncPeriod);
 
             return this.ResponseOk();
         }

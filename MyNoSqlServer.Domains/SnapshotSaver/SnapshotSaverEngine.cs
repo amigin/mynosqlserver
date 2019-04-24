@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using MyNoSqlServer.Domains.DataSynchronization;
 using MyNoSqlServer.Domains.Db;
-using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Domains.SnapshotSaver
 {
@@ -57,8 +56,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                             
                             case SyncPartition syncPartition:
                                 
-                                var dbRowsAsByteArray = syncPartition.DbPartition.GetAllRows().ToJsonArray().AsArray();
-                                var partitionSnapshot = PartitionSnapshot.Create(syncPartition.DbTable.Name, syncPartition.DbPartition.PartitionKey, dbRowsAsByteArray);
+                                var partitionSnapshot = PartitionSnapshot.Create(syncPartition.DbTable, syncPartition.DbPartition);
                                 await ServiceLocator.SnapshotStorage.SavePartitionSnapshotAsync(partitionSnapshot);
                                 break;
                             

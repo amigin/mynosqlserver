@@ -139,6 +139,44 @@ namespace MyNoSqlServer.Api.Hubs
             await Clients.Caller.SendAsync(tableName, "i", dataToSend);
         }
 
+
+        public Task GetRow(string tableName, string corrId, string partitionKey, string rowKey)
+        {
+            var dbTable = DbInstance.GetTable(tableName);
+            if (dbTable == null)
+                return Clients.Caller.SendTableNotFoundAsync(corrId);
+
+            var partition = dbTable.GetPartition(partitionKey);
+
+            if (partition == null)
+                return Clients.Caller.SendRowNotFoundAsync(corrId);
+
+            var row = partition.GetRow(corrId);
+            
+            if (row == null)
+                return Clients.Caller.SendRowNotFoundAsync(corrId);
+
+
+            return Clients.Caller.SendRowAsync(corrId, row);
+
+        }
+        
+        public Task GetRowsByPartition(string tableName, string corrId, string partitionKey)
+        {
+            var dbTable = DbInstance.GetTable(tableName);
+            if (dbTable == null)
+                return Clients.Caller.SendTableNotFoundAsync(corrId);
+
+            var partition = dbTable.GetPartition(partitionKey);
+
+            if (partition == null)
+                return Clients.Caller.SendEmptyRowsAsync(corrId);
+
+            var rows = partition.GetAllRows();
+
+            return Clients.Caller.SendRowsAsync(corrId, rows.ToJsonArray().AsArray());
+        }
+
         public async Task Ping()
         {
             await Clients.Caller.SendAsync("system", "heartbeat");

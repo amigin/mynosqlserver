@@ -19,10 +19,10 @@ namespace MyNoSqlClient
 
     public interface IMyNoSqlServerClient<T> where T : IMyNoSqlTableEntity, new()
     {
-        Task InsertAsync(T entity, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
-        Task InsertOrReplaceAsync(T entity, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
+        Task InsertAsync(T entity);
+        Task InsertOrReplaceAsync(T entity);
 
-        Task CleanAndKeepLastRecordsAsync(string partitionKey, int amount, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
+        Task CleanAndKeepLastRecordsAsync(string partitionKey, int amount);
         Task BulkInsertOrReplaceAsync(IEnumerable<T> entity, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
         Task CleanAndBulkInsertAsync(IEnumerable<T> entity, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
         Task CleanAndBulkInsertAsync(string partitionKey, IEnumerable<T> entity, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
@@ -33,7 +33,7 @@ namespace MyNoSqlClient
         
         Task<IReadOnlyList<T>> GetMultipleRowKeysAsync(string partitionKey, IEnumerable<string> rowKeys);
         
-        Task<T> DeleteAsync(string partitionKey, string rowKey, DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5);
+        Task<T> DeleteAsync(string partitionKey, string rowKey);
 
 
         Task<IEnumerable<T>> QueryAsync(string query);

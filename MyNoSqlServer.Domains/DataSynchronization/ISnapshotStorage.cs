@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using MyNoSqlServer.Domains.Db.Partitions;
+using MyNoSqlServer.Domains.Db.Rows;
 using MyNoSqlServer.Domains.Db.Tables;
 
 namespace MyNoSqlServer.Domains.DataSynchronization
@@ -20,6 +22,12 @@ namespace MyNoSqlServer.Domains.DataSynchronization
                 PartitionKey = partitionKey,
                 Snapshot = snapshot
             };
+        }
+
+        public static PartitionSnapshot Create(DbTable table, DbPartition partition)
+        {
+            var dbRowsAsByteArray = partition.GetAllRows().ToJsonArray().AsArray();
+            return Create(table.Name, partition.PartitionKey, dbRowsAsByteArray);
         }
 
 

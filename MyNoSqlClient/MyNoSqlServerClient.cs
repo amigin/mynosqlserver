@@ -11,15 +11,18 @@ namespace MyNoSqlClient
     public class MyNoSqlServerClient<T> : IMyNoSqlServerClient<T> where T: IMyNoSqlTableEntity, new()
     {
         private readonly string _url;
+        private readonly DataSynchronizationPeriod _dataSynchronizationPeriod;
         private readonly string _tableName;
 
         private const string PartitionKey = "partitionKey";
         private const string RowKey = "rowKey";
         private const string TableName = "tableName";
                 
-        public MyNoSqlServerClient(string url, string tableName)
+        public MyNoSqlServerClient(string url, string tableName, 
+            DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5)
         {
             _url = url;
+            _dataSynchronizationPeriod = dataSynchronizationPeriod;
             _tableName = tableName.ToLower();
             Task.Run(CreateTableIfNotExistsAsync);
         }
@@ -32,37 +35,38 @@ namespace MyNoSqlClient
                 .PostStringAsync(string.Empty);
         }
 
-        public async Task InsertAsync(T entity, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task InsertAsync(T entity)
         {
             await _url
                 .AppendPathSegments("Row", "Insert")
-                .AppendDataSyncPeriod(dataSynchronizationPeriod)
+                .AppendDataSyncPeriod(_dataSynchronizationPeriod)
                 .SetQueryParam(TableName, _tableName)
                 .PostJsonAsync(entity);
         }
 
-        public async Task InsertOrReplaceAsync(T entity, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task InsertOrReplaceAsync(T entity)
         {
                 await _url
                     .AppendPathSegments("Row", "InsertOrReplace")
-                    .AppendDataSyncPeriod(dataSynchronizationPeriod)
+                    .AppendDataSyncPeriod(_dataSynchronizationPeriod)
                     .SetQueryParam(TableName, _tableName)
                     .PostJsonAsync(entity);
         }
 
-        public async Task CleanAndKeepLastRecordsAsync(string partitionKey, int amount, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task CleanAndKeepLastRecordsAsync(string partitionKey, int amount)
         {
             await _url
                 .AppendPathSegments("CleanAndKeepLastRecords")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)
                 .SetQueryParam("amount", amount)
-                .AppendDataSyncPeriod(dataSynchronizationPeriod)
+                .AppendDataSyncPeriod(_dataSynchronizationPeriod)
                 .AllowHttpStatus(HttpStatusCode.NotFound)
                 .DeleteAsync();
         }
 
-        public async Task BulkInsertOrReplaceAsync(IEnumerable<T> entities, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task BulkInsertOrReplaceAsync(IEnumerable<T> entities,
+            DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5)
         {
             try
             {
@@ -80,7 +84,8 @@ namespace MyNoSqlClient
             }
         }
 
-        public async Task CleanAndBulkInsertAsync(IEnumerable<T> entities, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task CleanAndBulkInsertAsync(IEnumerable<T> entities,
+            DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5)
         {
             try
             {
@@ -98,7 +103,8 @@ namespace MyNoSqlClient
             }
         }
 
-        public async Task CleanAndBulkInsertAsync(string partitionKey, IEnumerable<T> entities, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task CleanAndBulkInsertAsync(string partitionKey, IEnumerable<T> entities,
+            DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5)
         {
             try
             {
@@ -173,7 +179,7 @@ namespace MyNoSqlClient
             return await response.ReadAsJsonAsync<List<T>>();
         }
 
-        public async Task<T> DeleteAsync(string partitionKey, string rowKey, DataSynchronizationPeriod dataSynchronizationPeriod)
+        public async Task<T> DeleteAsync(string partitionKey, string rowKey)
         {
             var result = await GetAsync(partitionKey, rowKey);
 
@@ -185,7 +191,7 @@ namespace MyNoSqlClient
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)
                 .SetQueryParam(RowKey, rowKey)
-                .AppendDataSyncPeriod(dataSynchronizationPeriod)
+                .AppendDataSyncPeriod(_dataSynchronizationPeriod)
                 .AllowHttpStatus(HttpStatusCode.NotFound)
                 .DeleteAsync();
 

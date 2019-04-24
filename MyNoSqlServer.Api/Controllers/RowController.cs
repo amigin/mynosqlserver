@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MyNoSqlServer.Api.Models;
 using MyNoSqlServer.Domains;
@@ -50,24 +51,24 @@ namespace MyNoSqlServer.Api.Controllers
         }
 
         [HttpPost("Row/Insert")]
-        public IActionResult InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+        public ValueTask<IActionResult> InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
             [FromQuery]string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
             if (shutDown != null)
-                return shutDown;
+                return new ValueTask<IActionResult>(shutDown); 
             
             if (string.IsNullOrEmpty(tableName))
-                return this.TableNameIsNull();
+                return new ValueTask<IActionResult>(this.TableNameIsNull());
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
 
             if (string.IsNullOrEmpty(body.PartitionKey))
-                return this.PartitionKeyIsNull();
+                return new ValueTask<IActionResult>(this.PartitionKeyIsNull());
 
             if (string.IsNullOrEmpty(body.RowKey))
-                return this.RowKeyIsNull();
+                return new ValueTask<IActionResult>(this.RowKeyIsNull());
 
             if (table.HasRecord(body))
                 this.ResponseConflict("Record with the same PartitionKey and RowKey is already exists");
@@ -76,112 +77,115 @@ namespace MyNoSqlServer.Api.Controllers
             
             var (dbPartition, dbRow) = table.Insert(body, data);
 
-            if (dbPartition != null)
-            {
-                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
-                ServiceLocator.DataSynchronizer?.SynchronizeUpdate(table, new[]{dbRow});
-            }
+            if (dbPartition == null) 
+                return new ValueTask<IActionResult>(this.ResponseConflict("Can not insert entity"));
+            
+            ServiceLocator.DataSynchronizer.SynchronizeUpdate(table, new[] {dbRow});
+            
+            return this.ResponseOk()
+                .SynchronizePartitionAsync(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
 
-            return dbPartition != null ? this.ResponseOk() : this.ResponseConflict("Can not insert entity");
         }
         
         [HttpPost("Row/InsertOrReplace")]
-        public IActionResult InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+        public ValueTask<IActionResult> InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
             [FromQuery]string syncPeriod)
         {
             
             var shutDown = this.CheckOnShuttingDown();
             if (shutDown != null)
-                return shutDown;
+                return new ValueTask<IActionResult>(shutDown);
             
             if (string.IsNullOrEmpty(tableName))
-                return this.TableNameIsNull();
+                return new ValueTask<IActionResult>(this.TableNameIsNull());
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
             if (string.IsNullOrEmpty(body.PartitionKey))
-                return this.PartitionKeyIsNull();
+                return new ValueTask<IActionResult>(this.PartitionKeyIsNull());
 
             if (string.IsNullOrEmpty(body.RowKey))
-                return this.RowKeyIsNull();
+                return new ValueTask<IActionResult>(this.RowKeyIsNull());
             
             var data = Request.BodyAsByteArray();
             var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
             
-            ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
-            ServiceLocator.DataSynchronizer?.SynchronizeUpdate(table, new[]{dbRow});
+            ServiceLocator.DataSynchronizer
+                .SynchronizeUpdate(table, new[]{dbRow});
+            
 
-            return this.ResponseOk();
+            return this.ResponseOk()
+                .SynchronizePartitionAsync(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
         }
 
         [HttpDelete("Row")]
-        public IActionResult Delete([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey,
+        public ValueTask<IActionResult> Delete([Required][FromQuery] string tableName, [Required][FromQuery] string partitionKey,
             [Required][FromQuery] string rowKey, 
             [FromQuery]string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
             if (shutDown != null)
-                return shutDown;
+                return new ValueTask<IActionResult>(shutDown);
             
             if (string.IsNullOrEmpty(tableName))
-                return this.TableNameIsNull();
+                return new ValueTask<IActionResult>(this.TableNameIsNull());
 
             if (string.IsNullOrEmpty(partitionKey))
-                return this.PartitionKeyIsNull();
+                return new ValueTask<IActionResult>(this.PartitionKeyIsNull());
 
             if (string.IsNullOrEmpty(rowKey))
-                return this.RowKeyIsNull();
+                return new ValueTask<IActionResult>(this.RowKeyIsNull());
 
             var table = DbInstance.GetTable(tableName);
 
             if (table == null)
-                return this.TableNotFound(tableName);
+                return new ValueTask<IActionResult>(this.TableNotFound(tableName));
 
             var (dbPartition, dbRow) = table.DeleteRow(partitionKey, rowKey);
 
             if (dbPartition == null) 
-                return this.RowNotFound(tableName, partitionKey, rowKey);
-            
-            ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
+                return new ValueTask<IActionResult>(this.RowNotFound(tableName, partitionKey, rowKey));
+         
             ServiceLocator.DataSynchronizer.SynchronizeDelete(table, new[]{dbRow});
             
-            return this.ResponseOk();
-
+            return this.ResponseOk().SynchronizeDeletePartitionAsync(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
         }
 
-        
+
         [HttpDelete("CleanAndKeepLastRecords")]
-        public IActionResult CleanAndKeepLastRecords([Required][FromQuery] string tableName, 
-            [Required][FromQuery] string partitionKey, [Required][FromQuery] int amount, 
-            [FromQuery]string syncPeriod)
+        public ValueTask<IActionResult> CleanAndKeepLastRecords([Required] [FromQuery] string tableName,
+            [Required] [FromQuery] string partitionKey, [Required] [FromQuery] int amount,
+            [FromQuery] string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
             if (shutDown != null)
-                return shutDown;
-            
+                return new ValueTask<IActionResult>(shutDown);
+
             if (string.IsNullOrEmpty(tableName))
-                return this.TableNameIsNull();
+                return new ValueTask<IActionResult>(this.TableNameIsNull());
 
             if (string.IsNullOrEmpty(partitionKey))
-                return this.PartitionKeyIsNull();
-            
+                return new ValueTask<IActionResult>(this.PartitionKeyIsNull());
+
             var table = DbInstance.GetTable(tableName);
 
             if (table == null)
-                return this.TableNotFound(tableName);
+                return new ValueTask<IActionResult>(this.TableNotFound(tableName));
 
 
             var (dbPartition, dbRows) = table.CleanAndKeepLastRecords(partitionKey, amount);
 
             if (dbPartition != null)
             {
-                ServiceLocator.SnapshotSaverScheduler.SynchronizePartition(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
                 ServiceLocator.DataSynchronizer.SynchronizeDelete(table, dbRows);
+
+                return this.ResponseOk()
+                    .SynchronizePartitionAsync(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
             }
-            
-            return this.ResponseOk();
+
+            return new ValueTask<IActionResult>(this.ResponseOk());
         }
-        
+
         [HttpGet("Count")]
         public IActionResult Count([Required][FromQuery] string tableName, [FromQuery] string partitionKey)
         {
