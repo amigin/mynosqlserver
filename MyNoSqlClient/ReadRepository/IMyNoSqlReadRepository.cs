@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 
-namespace MyNoSqlClient
+namespace MyNoSqlClient.ReadRepository
 {
     public interface IMyNoSqlReadRepository<out T> where T : IMyNoSqlTableEntity
     {
         T Get(string partitionKey, string rowKey);
+        
         IReadOnlyList<T> Get(string partitionKey);
         IReadOnlyList<T> Get(string partitionKey, int skip, int take);
         

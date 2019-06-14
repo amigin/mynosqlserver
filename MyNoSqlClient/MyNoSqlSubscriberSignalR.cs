@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,7 +8,28 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace MyNoSqlClient
 {
-    public class MyNoSqlSubscriberSignalR : IMyNoSqlSubscriberConnection
+
+    public class HubConnectionSynchronizer
+    {
+        private HubConnection _connection;
+        
+        public void Set(HubConnection connection)
+        {
+            _connection = connection;
+        }
+
+        public HubConnection Get()
+        {
+
+            var result = _connection;
+            if (result == null)
+                throw new Exception("No active connections");
+
+            return result;
+        }
+    }
+    
+    public class MyNoSqlSignalR : IMyNoSqlConnection
     {
 
         private const string SystemAction = "system";
@@ -28,19 +50,21 @@ namespace MyNoSqlClient
             = new Dictionary<string, Action<IDictionary<string, string>>>();
 
 
-
         private const string PathForSubscribes = "changes";
 
 
         private readonly string _url;
         private readonly TimeSpan _pingTimeOut;
-        public MyNoSqlSubscriberSignalR(string url, TimeSpan pingTimeOut)
+
+        private readonly HubConnectionSynchronizer _currentConnection = new HubConnectionSynchronizer();
+
+        public MyNoSqlSignalR(string url, TimeSpan pingTimeOut)
         {
             _url = url.Last() == '/' ? url + PathForSubscribes : url + "/" + PathForSubscribes;
             _pingTimeOut = pingTimeOut;
         }
 
-        public MyNoSqlSubscriberSignalR(string url) :
+        public MyNoSqlSignalR(string url) :
             this(url, TimeSpan.FromSeconds(30))
         {
         }
@@ -98,7 +122,53 @@ namespace MyNoSqlClient
             _deleteCallbacks.Add(tableName, deleteAction);
 
         }
+        
+        
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _requests 
+            = new ConcurrentDictionary<string, TaskCompletionSource<string>>();
 
+
+
+        public async Task<IReadOnlyList<T>> RequestRowsAsync<T>(string tableName, string partitionKey)
+        {
+
+            var connection = _currentConnection.Get();
+            var corrId = Guid.NewGuid().ToString("N");
+
+            var taskCompletion = new TaskCompletionSource<string>();
+            _requests.TryAdd(corrId, taskCompletion);
+
+            try
+            {
+                await connection.SendAsync("GetRows", corrId, partitionKey);
+                var json = await taskCompletion.Task;
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<List<T>>(json);
+            }
+            finally
+            {
+                _requests.TryRemove(corrId, out _);
+            }
+        }
+
+        public async Task<T> RequestRowAsync<T>(string tableName, string partitionKey, string rowKey)
+        {
+            var hub = _currentConnection.Get();
+            var corrId = Guid.NewGuid().ToString("N");
+            
+            var taskCompletion = new TaskCompletionSource<string>();
+            _requests.TryAdd(corrId, taskCompletion);
+
+            try
+            {        
+                await hub.SendAsync("GetRow", corrId, partitionKey, rowKey);
+                var json = await taskCompletion.Task;
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
+            }
+            finally
+            {
+                _requests.TryRemove(corrId, out _);
+            }
+        }
 
         private async Task SubscribeAsync(HubConnection hubConnection)
         {
@@ -109,6 +179,40 @@ namespace MyNoSqlClient
                     _lastIncomingDateTime = DateTime.UtcNow;
             });
 
+            hubConnection.On<string>("TableNotFound", corrId =>
+            {
+                if (_requests.TryRemove(corrId, out var taskCompletion))
+                {
+                    taskCompletion.SetException(new Exception("Table not found"));
+                }
+            });
+            
+            hubConnection.On<string>("RowNotFound", corrId =>
+            {
+                if (_requests.TryRemove(corrId, out var taskCompletion))
+                {
+                    taskCompletion.SetResult(null);
+                }
+            });
+            
+            hubConnection.On<string, byte[]>("Row", (corrId, data) =>
+            {
+                if (_requests.TryRemove(corrId, out var taskCompletion))
+                {
+                    taskCompletion.SetResult(Encoding.UTF8.GetString(data));
+                }
+            });
+
+            
+            hubConnection.On<string, byte[]>("Rows", (corrId, data) =>
+            {
+                if (_requests.TryRemove(corrId, out var taskCompletion))
+                {
+                    taskCompletion.SetResult(Encoding.UTF8.GetString(data));
+                }
+            });
+
+            
             foreach (var tableName in _deserializers.Keys)
             {
                 hubConnection.On<string, byte[]>(tableName, (action, data) =>
@@ -192,9 +296,16 @@ namespace MyNoSqlClient
                         .Build();
 
                     await StartAsync(hubConnection);
+                    
+                    _currentConnection.Set(hubConnection);
+                    
                     await SubscribeAsync(hubConnection);
                     await PingProcessAsync(hubConnection);
                     await hubConnection.StopAsync();
+                    _currentConnection.Set(null);
+                    
+                    ResponseAsAllRequestsAreDisconnected();
+
                 }
                 catch (Exception e)
                 {
@@ -203,6 +314,17 @@ namespace MyNoSqlClient
             }
         }
 
+
+        private void ResponseAsAllRequestsAreDisconnected()
+        {
+            var keys = _requests.Keys;
+            foreach (var key in keys)
+            {
+                if (_requests.TryRemove(key, out var taskCompletion))
+                    taskCompletion.SetException(new Exception("Socket disconnected"));
+                
+            }
+        }
 
         private Task _task;
 

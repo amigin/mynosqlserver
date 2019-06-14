@@ -1,5 +1,5 @@
 #bash
 rm -rf app
 dotnet publish -o app -c release
-docker build -t amigin/mynosqlserver:1.0.5 .
-docker push amigin/mynosqlserver:1.0.5
+docker build -t amigin/mynosqlserver:1.0.6 .
+docker push amigin/mynosqlserver:1.0.6

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using MyNoSqlClient.ReadRepository;
 
 namespace MyNoSqlClient
 {
@@ -13,7 +14,7 @@ namespace MyNoSqlClient
         
         private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
 
-        public MyNoSqlReadRepository(IMyNoSqlSubscriberConnection subscriber, string tableName)
+        public MyNoSqlReadRepository(IMyNoSqlConnection subscriber, string tableName)
         {
             subscriber.Subscribe<T>(tableName, Init, InitPartition, Update,Delete);
         }
