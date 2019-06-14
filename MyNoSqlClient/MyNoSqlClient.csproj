@@ -9,13 +9,13 @@
         <RepositoryUrl>https://github.com/amigin/mynosqlserver</RepositoryUrl>
         <RepositoryType>GIT</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>1.0.8-preview4</PackageVersion>
+        <PackageVersion>1.0.9-preview4</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="Flurl.Http" Version="2.4.2" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="3.0.0-preview6.19307.2" />
-      <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.2" />
+      <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.0-preview.18571.3" />
 
     </ItemGroup>
 
