@@ -28,8 +28,9 @@ namespace MyNoSqlServer.Api.Controllers
 
         public static async ValueTask<byte[]> BodyAsByteArrayAsync(this HttpRequest request)
         {
-            var result = await request.BodyReader.ReadAsync();
-            return result.Buffer.ToArray();
+            var memoryStream = new MemoryStream();
+            await request.BodyReader.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
         }
 
         public static IActionResult CheckOnShuttingDown(this Controller ctx)
