@@ -28,18 +28,23 @@ namespace MyNoSqlServer.Api.Controllers
 
         public static async ValueTask<byte[]> BodyAsByteArrayAsync(this HttpRequest request)
         {
+
             
-            var result = (await request.BodyReader.ReadAsync()).Buffer;
+            var res = await request.BodyReader.ReadAsync();
+            request.BodyReader.AdvanceTo(res.Buffer.Start);
+            if (res.Buffer.IsSingleSegment)
+                return res.Buffer.First.ToArray();
 
-            if (result.IsSingleSegment)
-                return result.FirstSpan.ToArray();
 
+            var pos = res.Buffer.Start;
+            var listResult = new List<byte>();
 
-            var list = new List<byte>();
-            var pos = result.Start;
-            while (result.TryGet(ref pos, out var mem))
-                list.AddRange(mem.ToArray());
-            return list.ToArray();
+            while (res.Buffer.TryGet(ref pos, out var mem))
+            {
+                listResult.AddRange(mem.ToArray());
+            }
+
+            return listResult.ToArray();
         }
 
         public static IActionResult CheckOnShuttingDown(this Controller ctx)

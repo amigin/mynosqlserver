@@ -18,7 +18,7 @@ namespace MyNoSqlServer.Api.Controllers
     public class BulkController : Controller
     {
         [HttpPost]
-        public async ValueTask<IActionResult> InsertOrReplace([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body, 
+        public async ValueTask<IActionResult> InsertOrReplace([Required][FromQuery] string tableName, 
             [FromQuery]string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
@@ -70,10 +70,24 @@ namespace MyNoSqlServer.Api.Controllers
             ServiceLocator.DataSynchronizer?.PublishInitTable(table);
         }
 
+        /*
+        [HttpPost]
+        public IActionResult TestBody()
+        {
+
+            var body = Request.BodyAsByteArrayAsync().Result;
+            var res = Encoding.UTF8.GetString(body);
+            Console.WriteLine(res);
+            return Json(new
+            {
+                res
+            });
+        }
+*/
 
         [HttpPost]
         public async ValueTask<IActionResult> CleanAndBulkInsert([Required] [FromQuery] string tableName,
-            [FromQuery] string partitionKey, [Required] [FromBody] MyNoSqlDbEntity[] body,
+            [FromQuery] string partitionKey,
             [FromQuery] string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
