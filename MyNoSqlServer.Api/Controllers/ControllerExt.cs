@@ -26,11 +26,20 @@ namespace MyNoSqlServer.Api.Controllers
             return ctx.File(response, AppJsonContentType);
         }
 
-        public static async ValueTask<byte[]> BodyAsByteArrayAsync(this HttpRequest request)
+        public static async ValueTask<IReadOnlyList<byte>> BodyAsByteArrayAsync(this HttpRequest request)
         {
-            var memoryStream = new MemoryStream();
-            await request.BodyReader.CopyToAsync(memoryStream);
-            return memoryStream.ToArray();
+            
+            var result = (await request.BodyReader.ReadAsync()).Buffer;
+
+            if (result.IsSingleSegment)
+                return result.FirstSpan.ToArray();
+
+
+            var list = new List<byte>();
+            var pos = result.Start;
+            while (result.TryGet(ref pos, out var mem))
+                list.AddRange(mem.ToArray());
+            return list.ToArray();
         }
 
         public static IActionResult CheckOnShuttingDown(this Controller ctx)
