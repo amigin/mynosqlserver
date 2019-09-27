@@ -26,7 +26,7 @@ namespace MyNoSqlServer.Api.Controllers
             return ctx.File(response, AppJsonContentType);
         }
 
-        public static async ValueTask<IReadOnlyList<byte>> BodyAsByteArrayAsync(this HttpRequest request)
+        public static async ValueTask<byte[]> BodyAsByteArrayAsync(this HttpRequest request)
         {
             
             var result = (await request.BodyReader.ReadAsync()).Buffer;
