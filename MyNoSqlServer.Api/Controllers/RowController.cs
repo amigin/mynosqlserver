@@ -51,70 +51,70 @@ namespace MyNoSqlServer.Api.Controllers
         }
 
         [HttpPost("Row/Insert")]
-        public ValueTask<IActionResult> InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+        public async ValueTask<IActionResult> InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
             [FromQuery]string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
             if (shutDown != null)
-                return new ValueTask<IActionResult>(shutDown); 
+                return shutDown; 
             
             if (string.IsNullOrEmpty(tableName))
-                return new ValueTask<IActionResult>(this.TableNameIsNull());
+                return this.TableNameIsNull();
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
 
             if (string.IsNullOrEmpty(body.PartitionKey))
-                return new ValueTask<IActionResult>(this.PartitionKeyIsNull());
+                return this.PartitionKeyIsNull();
 
             if (string.IsNullOrEmpty(body.RowKey))
-                return new ValueTask<IActionResult>(this.RowKeyIsNull());
+                return this.RowKeyIsNull();
 
             if (table.HasRecord(body))
                 this.ResponseConflict("Record with the same PartitionKey and RowKey is already exists");
 
-            var data = Request.BodyAsByteArray();
+            var data = await Request.BodyAsByteArrayAsync();
             
             var (dbPartition, dbRow) = table.Insert(body, data);
 
             if (dbPartition == null) 
-                return new ValueTask<IActionResult>(this.ResponseConflict("Can not insert entity"));
+                return this.ResponseConflict("Can not insert entity");
             
             ServiceLocator.DataSynchronizer.SynchronizeUpdate(table, new[] {dbRow});
             
-            return this.ResponseOk()
+            return await this.ResponseOk()
                 .SynchronizePartitionAsync(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
 
         }
         
         [HttpPost("Row/InsertOrReplace")]
-        public ValueTask<IActionResult> InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+        public async ValueTask<IActionResult> InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
             [FromQuery]string syncPeriod)
         {
             
             var shutDown = this.CheckOnShuttingDown();
             if (shutDown != null)
-                return new ValueTask<IActionResult>(shutDown);
+                return shutDown;
             
             if (string.IsNullOrEmpty(tableName))
-                return new ValueTask<IActionResult>(this.TableNameIsNull());
+                return this.TableNameIsNull();
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
             if (string.IsNullOrEmpty(body.PartitionKey))
-                return new ValueTask<IActionResult>(this.PartitionKeyIsNull());
+                return this.PartitionKeyIsNull();
 
             if (string.IsNullOrEmpty(body.RowKey))
-                return new ValueTask<IActionResult>(this.RowKeyIsNull());
+                return this.RowKeyIsNull();
             
-            var data = Request.BodyAsByteArray();
+            var data = await Request.BodyAsByteArrayAsync();
             var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
             
             ServiceLocator.DataSynchronizer
                 .SynchronizeUpdate(table, new[]{dbRow});
             
 
-            return this.ResponseOk()
+            return await this.ResponseOk()
                 .SynchronizePartitionAsync(table, dbPartition, syncPeriod.ParseSynchronizationPeriod());
         }
 

@@ -11,32 +11,32 @@ namespace MyNoSqlServer.Common
         public ArraySpan(T[] array, int startIndex, int endIndex)
         {
             _array = array;
-            StartIndex = startIndex;
-            EndIndex = endIndex;
+            _startIndex = startIndex;
+            _endIndex = endIndex;
         }
-        
-        public int StartIndex { get; }
-        public int EndIndex { get; }
 
-        public int Length => EndIndex - StartIndex;
+        private readonly int _startIndex;
+        private readonly int _endIndex;
+
+        public int Length => _endIndex - _startIndex;
 
         private readonly T[] _array;
 
         public T[] AsArray()
         {
             var result = new T[Length];            
-            Array.Copy(_array, StartIndex, result, 0, Length);
+            Array.Copy(_array, _startIndex, result, 0, Length);
             return result;
         }
         
         public void CopyToArray(int srcOffset,  T[] destArray, int destOffset, int destLength)
         {
-            Array.Copy(_array, srcOffset+StartIndex, destArray, destOffset, destLength);
+            Array.Copy(_array, srcOffset+_startIndex, destArray, destOffset, destLength);
         }
 
         public IEnumerator<T> GetEnumerator()
         {
-            for (var i = StartIndex; i < EndIndex; i++)
+            for (var i = _startIndex; i < _endIndex; i++)
                 yield return _array[i];
         }
 
@@ -89,13 +89,13 @@ namespace MyNoSqlServer.Common
         public static string RemoveDoubleQuotes(this string str)
         {
             if (str == null)
-                return str;
+                return null;
 
             if (str.Length < 2)
                 return str;
 
 
-            if (str[0] == '"' && str[str.Length - 1] == '"')
+            if (str[0] == '"' && str[^1] == '"')
                 return str.Length == 2 ? string.Empty : str.Substring(1, str.Length - 2);
 
             return str;

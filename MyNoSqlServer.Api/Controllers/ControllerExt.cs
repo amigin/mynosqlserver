@@ -1,8 +1,11 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db.Rows;
 using MyNoSqlServer.Domains.SnapshotSaver;
@@ -23,12 +26,10 @@ namespace MyNoSqlServer.Api.Controllers
             return ctx.File(response, AppJsonContentType);
         }
 
-        public static byte[] BodyAsByteArray(this HttpRequest request)
+        public static async ValueTask<byte[]> BodyAsByteArrayAsync(this HttpRequest request)
         {
-            var memArray = new MemoryStream();
-            request.Body.Position = 0;
-            request.Body.CopyTo(memArray);
-            return memArray.ToArray();
+            var result = await request.BodyReader.ReadAsync();
+            return result.Buffer.ToArray();
         }
 
         public static IActionResult CheckOnShuttingDown(this Controller ctx)

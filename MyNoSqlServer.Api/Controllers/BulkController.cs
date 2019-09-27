@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MyNoSqlServer.Api.Models;
 using MyNoSqlServer.Common;
@@ -17,7 +18,7 @@ namespace MyNoSqlServer.Api.Controllers
     public class BulkController : Controller
     {
         [HttpPost]
-        public IActionResult InsertOrReplace([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body, 
+        public async ValueTask<IActionResult> InsertOrReplace([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity[] body, 
             [FromQuery]string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
@@ -34,7 +35,7 @@ namespace MyNoSqlServer.Api.Controllers
             
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
-            var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
+            var entitiesToInsert = (await Request.BodyAsByteArrayAsync()).SplitJsonArrayToObjects().ToList();
 
             var (dbPartitions, dbRows) = table.BulkInsertOrReplace(entitiesToInsert);
 
@@ -71,7 +72,7 @@ namespace MyNoSqlServer.Api.Controllers
 
 
         [HttpPost]
-        public IActionResult CleanAndBulkInsert([Required] [FromQuery] string tableName,
+        public async ValueTask<IActionResult> CleanAndBulkInsert([Required] [FromQuery] string tableName,
             [FromQuery] string partitionKey, [Required] [FromBody] MyNoSqlDbEntity[] body,
             [FromQuery] string syncPeriod)
         {
@@ -89,7 +90,7 @@ namespace MyNoSqlServer.Api.Controllers
 
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
-            var entitiesToInsert = Request.BodyAsByteArray().SplitJsonArrayToObjects().ToList();
+            var entitiesToInsert = (await Request.BodyAsByteArrayAsync()).SplitJsonArrayToObjects().ToList();
 
             if (string.IsNullOrEmpty(partitionKey))
                 CleanTableAndBulkInsert(table, entitiesToInsert, theSyncPeriod);

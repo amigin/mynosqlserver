@@ -18,12 +18,12 @@ namespace MyNoSqlServer.Domains
         
         public const byte OpenBracket = (byte) '{';
         public const byte CloseBracket = (byte) '}';
-        public const byte DoubleQuote = (byte) '"';
+        private const byte DoubleQuote = (byte) '"';
         public const byte DoubleColumn = (byte) ':';
         public const byte OpenArray = (byte) '[';
         public const byte CloseArray = (byte) ']';            
         public const byte Comma = (byte) ',';
-        public const byte EscSymbol = (byte) '\\';
+        private const byte EscSymbol = (byte) '\\';
         
         private static readonly Dictionary<char, char> StartOfDigit = new Dictionary<char, char>
         {
