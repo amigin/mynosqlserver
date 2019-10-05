@@ -1,9 +1,11 @@
+using System;
+using System.Collections.Generic;
 using MyNoSqlServer.Common;
 using Xunit;
 
 namespace MyNoSqlServerUnitTests
 {
-    public class TestUtils
+    public class TestStringComparator
     {
         
         [Fact]
@@ -37,4 +39,5 @@ namespace MyNoSqlServerUnitTests
         }
         
     }
+
 }

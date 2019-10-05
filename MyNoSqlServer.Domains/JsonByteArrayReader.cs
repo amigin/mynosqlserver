@@ -1,5 +1,7 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using MyNoSqlServer.Common;
 
@@ -11,14 +13,37 @@ namespace MyNoSqlServer.Domains
         OpenBracket, OpenKey, CloseKey, DoubleColumn, OpenValue, CloseStringValue, CloseNumberOrBoolValue, CloseObject, CloseArray, Comma, EndOfFile
     }
 
-    
+
+    public class MyJsonFirstLevelFieldData
+    {
+        public MyJsonFirstLevelFieldData(in ReadOnlyMemory<byte> field, in ReadOnlyMemory<byte> value)
+        {
+            Field = field;
+            Value = value;
+        }
+        
+        public MyJsonFirstLevelFieldData(in ReadOnlyMemory<byte> field, string value)
+        {
+            Field = field;
+            Value = Encoding.UTF8.GetBytes(value);
+        }
+
+        public ReadOnlyMemory<byte> Field { get; }
+        public ReadOnlyMemory<byte> Value { get; }
+
+
+        public override string ToString()
+        {
+            return Field.AsString()+":"+Value.AsString();
+        }
+    }
     
     public static class JsonByteArrayReader
     {
         
         public const byte OpenBracket = (byte) '{';
         public const byte CloseBracket = (byte) '}';
-        private const byte DoubleQuote = (byte) '"';
+        public const byte DoubleQuote = (byte) '"';
         public const byte DoubleColumn = (byte) ':';
         public const byte OpenArray = (byte) '[';
         public const byte CloseArray = (byte) ']';            
@@ -51,13 +76,13 @@ namespace MyNoSqlServer.Domains
         }
 
 
-        private static void ThrowException(this byte[] byteArray, int position)
+        private static void ThrowException(this IMyMemory byteArray, int position)
         {
             var i = position - 10;
             if (i < 0)
                 i = 0;
 
-            var str = Encoding.UTF8.GetString(byteArray, i, position - i);
+            var str = Encoding.UTF8.GetString(byteArray.Slice(i, position-i).Span);
 
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(str);
@@ -66,9 +91,11 @@ namespace MyNoSqlServer.Domains
             throw new Exception("Invalid Json at position: "+str);
         }
 
-        public static IEnumerable<(ArraySpan<byte> field, ArraySpan<byte> value)> ParseFirstLevelOfJson(
-            this byte[] byteArray)
+        public static List<MyJsonFirstLevelFieldData> ParseFirstLevelOfJson(
+            this IMyMemory inData)
         {
+
+            var result = new List<MyJsonFirstLevelFieldData>();
             var expectedToken = ExpectedToken.OpenBracket;
 
 
@@ -81,48 +108,57 @@ namespace MyNoSqlServer.Domains
 
             var valueStartIndex = 0;
 
-            for (var i = 0; i < byteArray.Length; i++)
+            var skipItems = 0;
+
+            
+            foreach (var (b, index) in inData.Enumerate())
             {
-                var c = byteArray[i];
+
+                if (skipItems > 0)
+                {
+                    skipItems--;
+                    continue;
+                }
+                
                 if (expectedToken == ExpectedToken.EndOfFile)
                     break;
 
                 switch (expectedToken)
                 {
                     case ExpectedToken.OpenBracket:
-                        if (c.IsSpace())
+                        if (b.IsSpace())
                             continue;
-                        if (c != OpenBracket)
-                            byteArray.ThrowException(i);
+                        if (b != OpenBracket)
+                            inData.ThrowException(index);
 
                         expectedToken = ExpectedToken.OpenKey;
                         break;
 
                     case ExpectedToken.OpenKey:
-                        if (c == CloseBracket)
+                        if (b == CloseBracket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             break;
                         }
 
-                        if (c.IsSpace())
+                        if (b.IsSpace())
                             continue;
 
-                        if (c != DoubleQuote)
-                            byteArray.ThrowException(i);
+                        if (b != DoubleQuote)
+                            inData.ThrowException(index);
 
-                        keyStartIndex = i;
+                        keyStartIndex = index;
                         expectedToken = ExpectedToken.CloseKey;
                         break;
 
                     case ExpectedToken.CloseKey:
-                        switch (c)
+                        switch (b)
                         {
                             case EscSymbol:
-                                i++;
+                                skipItems++;
                                 break;
                             case DoubleQuote:
-                                keyEndIndex = i + 1;
+                                keyEndIndex = index + 1;
                                 expectedToken = ExpectedToken.DoubleColumn;
                                 break;
                         }
@@ -130,22 +166,22 @@ namespace MyNoSqlServer.Domains
                         break;
 
                     case ExpectedToken.DoubleColumn:
-                        if (c.IsSpace())
+                        if (b.IsSpace())
                             continue;
 
-                        if (c != DoubleColumn)
-                            byteArray.ThrowException(i);
+                        if (b != DoubleColumn)
+                            inData.ThrowException(index);
 
                         expectedToken = ExpectedToken.OpenValue;
                         break;
 
                     case ExpectedToken.OpenValue:
-                        if (c.IsSpace())
+                        if (b.IsSpace())
                             continue;
 
-                        valueStartIndex = i;
+                        valueStartIndex = index;
 
-                        switch (c)
+                        switch (b)
                         {
                             case OpenArray:
                                 expectedToken = ExpectedToken.CloseArray;
@@ -160,10 +196,10 @@ namespace MyNoSqlServer.Domains
                                 break;
                             default:
                             {
-                                if (StartOfDigit.ContainsKey((char) c) || c.IsStartOfBool())
+                                if (StartOfDigit.ContainsKey((char) b) || b.IsStartOfBool())
                                     expectedToken = ExpectedToken.CloseNumberOrBoolValue;
                                 else
-                                    byteArray.ThrowException(i);
+                                    inData.ThrowException(index);
 
                                 break;
                             }
@@ -172,15 +208,18 @@ namespace MyNoSqlServer.Domains
                         break;
 
                     case ExpectedToken.CloseStringValue:
-                        switch (c)
+                        switch (b)
                         {
                             case EscSymbol:
-                                i++;
+                                skipItems++;
                                 break;
                             case DoubleQuote:
-                                yield return (
-                                    new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
-                                    new ArraySpan<byte>(byteArray, valueStartIndex, i + 1));
+                                var item =  new MyJsonFirstLevelFieldData (
+                                    inData.Slice(keyStartIndex, keyEndIndex-keyStartIndex),
+                                    inData.Slice(valueStartIndex, index + 1 - valueStartIndex));
+                                
+                                result.Add(item);
+                                
                                 expectedToken = ExpectedToken.Comma;
                                 break;
                         }
@@ -188,30 +227,31 @@ namespace MyNoSqlServer.Domains
                         break;
 
                     case ExpectedToken.CloseNumberOrBoolValue:
-                        if (c == Comma || c == CloseBracket || c.IsSpace())
+                        if (b == Comma || b == CloseBracket || b.IsSpace())
                         {
-                            yield return (
-                                new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
-                                new ArraySpan<byte>(byteArray, valueStartIndex, i));
-                            if (c == CloseBracket)
+                            var item = new MyJsonFirstLevelFieldData(
+                                inData.Slice(keyStartIndex, keyEndIndex-keyStartIndex),
+                                inData.Slice(valueStartIndex, index-valueStartIndex));
+                            result.Add(item);
+                            if (b == CloseBracket)
                                 expectedToken = ExpectedToken.EndOfFile;
                             else
-                                expectedToken = c == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
+                                expectedToken = b == Comma ? ExpectedToken.OpenKey : ExpectedToken.Comma;
                         }
 
                         break;
 
                     case ExpectedToken.Comma:
-                        if (c.IsSpace())
+                        if (b.IsSpace())
                             continue;
-                        if (c == CloseBracket)
+                        if (b == CloseBracket)
                         {
                             expectedToken = ExpectedToken.EndOfFile;
                             continue;
                         }
 
-                        if (c != Comma)
-                            byteArray.ThrowException(i);
+                        if (b != Comma)
+                            inData.ThrowException(index);
 
                         expectedToken = ExpectedToken.OpenKey;
                         continue;
@@ -219,10 +259,10 @@ namespace MyNoSqlServer.Domains
                     case ExpectedToken.CloseObject:
                         if (subObjectString)
                         {
-                            switch (c)
+                            switch (b)
                             {
                                 case EscSymbol:
-                                    i++;
+                                    skipItems++;
                                     continue;
                                 case DoubleQuote:
                                     subObjectString = false;
@@ -231,7 +271,7 @@ namespace MyNoSqlServer.Domains
                         }
                         else
                         {
-                            switch (c)
+                            switch (b)
                             {
                                 case DoubleQuote:
                                     subObjectString = true;
@@ -240,9 +280,10 @@ namespace MyNoSqlServer.Domains
                                     subObjectLevel++;
                                     continue;
                                 case CloseBracket when subObjectLevel == 0:
-                                    yield return (
-                                        new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
-                                        new ArraySpan<byte>(byteArray, valueStartIndex, i + 1));
+                                    var item = new MyJsonFirstLevelFieldData(
+                                        inData.Slice(keyStartIndex, keyEndIndex-keyStartIndex),
+                                        inData.Slice(valueStartIndex, index + 1 - valueStartIndex));
+                                    result.Add(item);
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseBracket:
@@ -256,10 +297,10 @@ namespace MyNoSqlServer.Domains
                     case ExpectedToken.CloseArray:
                         if (subObjectString)
                         {
-                            switch (c)
+                            switch (b)
                             {
                                 case EscSymbol:
-                                    i++;
+                                    skipItems++;
                                     continue;
                                 case DoubleQuote:
                                     subObjectString = false;
@@ -268,7 +309,7 @@ namespace MyNoSqlServer.Domains
                         }
                         else
                         {
-                            switch (c)
+                            switch (b)
                             {
                                 case DoubleQuote:
                                     subObjectString = true;
@@ -277,9 +318,10 @@ namespace MyNoSqlServer.Domains
                                     subObjectLevel++;
                                     continue;
                                 case CloseArray when subObjectLevel == 0:
-                                    yield return (
-                                        new ArraySpan<byte>(byteArray, keyStartIndex, keyEndIndex),
-                                        new ArraySpan<byte>(byteArray, valueStartIndex, i + 1));
+                                    var item = new MyJsonFirstLevelFieldData(
+                                        inData.Slice(keyStartIndex, keyEndIndex-keyStartIndex),
+                                        inData.Slice(valueStartIndex, index + 1 - valueStartIndex));
+                                    result.Add(item);
                                     expectedToken = ExpectedToken.Comma;
                                     break;
                                 case CloseArray:
@@ -296,61 +338,202 @@ namespace MyNoSqlServer.Domains
 
             if (expectedToken != ExpectedToken.EndOfFile)
                 throw new Exception("Invalid Json");
+
+
+            return result;
+        }
+
+        private static byte[] MergeToArray(this IReadOnlyList<ReadOnlyMemory<byte>> list, int startIndex, int endIndex)
+        {
+            var resultLen = list.Skip(1).Take(list.Count - 2).Sum(resItm => resItm.Length) 
+                            + list[0].Length - startIndex
+                                                         + endIndex+1;
+
+            var result = new byte[resultLen];
+
+            var i = 0;
+
+            foreach (var b in list[0].Slice(startIndex, list[0].Length - startIndex).Span)
+            {
+                result[i] = b;
+                i++;
+            }
+
+            for (var j = 1; j < list.Count - 1; j++)
+                foreach (var b in list[j].Span)
+                {
+                    result[i] = b;
+                    i++;
+                }
+
+
+            var last = list[^1];
+            
+            foreach (var b in last.Slice(0, endIndex+1).Span)
+            {
+                result[i] = b;
+                i++;
+            }
+
+            return result;
         }
 
 
+        public static IEnumerable<ReadOnlyMemory<byte>> Enumerate(
+            this ReadOnlySequence<byte> seq)
+        {
+            foreach (var itm in seq)
+                yield return itm;
+        }
 
-        public static IEnumerable<ArraySpan<byte>> SplitJsonArrayToObjects(this byte[] byteArray)
+        public static IEnumerable<IMyMemory> SplitJsonArrayToObjects(this IEnumerable<ReadOnlyMemory<byte>> seq)
         {
             var objectLevel = 0;
-            var startIndex = -1;
+            
 
             var insideString = false;
             var escapeMode = false;
-            
-            for (var i=0; i<byteArray.Length; i++)
+
+            var resultList = new List<ReadOnlyMemory<byte>>();
+            var startIndex = -1;
+
+            foreach (var mem in seq)
             {
-                if (escapeMode)
+                
+                if (resultList.Count>0)
+                    resultList.Add(mem);
+
+                for (var i = 0; i < mem.Span.Length; i++)
                 {
-                    escapeMode = false;
-                    continue;
+                    var itm = mem.Span[i];
+                    if (escapeMode)
+                    {
+                        escapeMode = false;
+                        continue;
+                    }
+
+                    switch (itm)
+                    {
+
+                        case (byte) '\\':
+                            if (insideString)
+                                escapeMode = true;
+                            break;
+
+                        case (byte) '"':
+                            insideString = !insideString;
+                            break;
+
+                        case (byte) '{':
+                            if (!insideString)
+                            {
+                                objectLevel++;
+                                if (objectLevel == 1)
+                                {
+                                    startIndex = i;
+                                    resultList.Add(mem);
+                                }
+                                    
+                            }
+
+                            break;
+
+                        case (byte) '}':
+                            if (!insideString)
+                            {
+                                objectLevel--;
+                                if (objectLevel == 0)
+                                {
+                                    if (resultList.Count == 0)
+                                        throw new Exception("Invalid Json");
+                                    
+                                    
+                                    if (resultList.Count == 1)
+                                    {
+                                        var first = resultList[0];
+                                        yield return first.Slice(startIndex, i - startIndex +1).AsMyMemory();  
+                                        resultList.Clear();
+                                    }
+                                    else
+                                    {
+                                        yield return resultList.MergeToArray(startIndex, i).AsMyMemory();
+                                        resultList.Clear();
+                                    }
+                                    
+                                }
+                            }
+
+                            break;
+                    }
+
                 }
-
-                switch (byteArray[i])
-                {
-
-                    case (byte) '\\':
-                        if (insideString)
-                            escapeMode = true;
-                        break;
-                    
-                    case (byte) '"':
-                        insideString = !insideString;
-                        break;
-
-                    case (byte) '{':
-                        if (!insideString)
-                        {
-                            objectLevel++;
-                            if (objectLevel == 1)
-                                startIndex = i;
-                        }
-
-                        break;
-
-                    case (byte) '}':
-                        if (!insideString)
-                        {
-                            objectLevel--;
-                            if (objectLevel == 0)
-                                yield return new ArraySpan<byte>(byteArray, startIndex, i + 1);
-                        }
-
-                        break;
-                }
-
             }
 
+        }
+        
+        
+        public static byte[] AsDbRowJson(this IReadOnlyList<MyJsonFirstLevelFieldData> src)
+        {
+
+            var len = 2;
+            var secondValue = false;
+
+            foreach (var fieldData in src)
+            {
+                if (secondValue)
+                    len++;
+                else
+                    secondValue = true;
+
+                len += fieldData.Field.Length + fieldData.Value.Length + 1;
+            }
+
+            var result = new byte[len];
+
+            var i = 0;
+
+            result[i++] = OpenBracket;
+            secondValue = false;
+            
+            foreach (var fieldData in src)
+            {
+                if (secondValue)
+                    result[i++] = Comma;
+                else
+                    secondValue = true;
+                
+                foreach (var c in fieldData.Field.Span)
+                    result[i++] = c;
+                
+                result[i++] = DoubleColumn;
+
+                foreach (var c in fieldData.Value.Span)
+                    result[i++] = c;    
+                
+            }
+
+            result[i] = CloseBracket;
+            return result.ToArray();
+
+        }
+        
+
+        public static string AsJsonString(this in ReadOnlyMemory<byte> src)
+        {
+            if (src.IsNull())
+                return null;
+
+
+
+            var mySpan = src.Span[0] == DoubleQuote && src.Span[src.Length-1] == DoubleQuote
+                ? src.Slice(1, src.Length - 2).Span
+                : src.Span;
+
+            var result = mySpan.Length == 0 
+                ? string.Empty
+                : Encoding.UTF8.GetString(mySpan);
+
+            return result;
         }
     }
 }

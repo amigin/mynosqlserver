@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains.Db.Partitions;
@@ -63,22 +62,20 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
-        public DbPartition InitPartitionFromSnapshot(string partitionKey, byte[] data)
+        public DbPartition InitPartitionFromSnapshot(IMyMemory data)
         {
             DbPartition partition = null;
             ReaderWriterLockSlim.EnterWriteLock();
             try
             {
                 
-                foreach (var dbRowMemory in data.SplitJsonArrayToObjects())
+                var initData = new ReadOnlyMemory<byte>(data.AsArray());
+                foreach (var dbRowMemory in new[]{initData}.SplitJsonArrayToObjects())
                 {
-                    var array = dbRowMemory.AsArray();
-                    var jsonString = Encoding.UTF8.GetString(array);
-                    var entityInfo =
-                        Newtonsoft.Json.JsonConvert.DeserializeObject<MyNoSqlDbEntity>(jsonString);
-                    
-                    if (entityInfo.PartitionKey != partitionKey)
-                        continue;
+
+                    var jsonFields = dbRowMemory.ParseFirstLevelOfJson();
+
+                    var entityInfo = jsonFields.GetEntityInfo();
 
                     if (!_partitions.ContainsKey(entityInfo.PartitionKey))
                     {
@@ -89,13 +86,10 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     if (partition == null)
                         partition = _partitions[entityInfo.PartitionKey];
                     
-                    var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, array);
+                    var dbRow = DbRow.RestoreSnapshot(entityInfo, dbRowMemory);
 
                     partition.InsertOrReplace(dbRow);
-
                 }
-                
-                
             }
             finally
             {
@@ -106,7 +100,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
 
         }
 
-        public (DbPartition partition, DbRow dbRow) Insert(IMyNoSqlDbEntity entityInfo, byte[] data)
+        public (DbPartition partition, DbRow dbRow) Insert(IMyNoSqlDbEntity entityInfo, List<MyJsonFirstLevelFieldData> fields)
         {
             ReaderWriterLockSlim.EnterWriteLock();
             try
@@ -116,7 +110,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
 
                 var partition = _partitions[entityInfo.PartitionKey];
                 
-                var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+                var dbRow = DbRow.CreateNew(entityInfo, fields);
                 
                 if (partition.Insert(dbRow))
                     return (partition, dbRow);
@@ -129,7 +123,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
             return (null, null);
         }
         
-        public (DbPartition partition, DbRow dbRow) InsertOrReplace(IMyNoSqlDbEntity entityInfo, byte[] data)
+        public (DbPartition partition, DbRow dbRow) InsertOrReplace(IMyNoSqlDbEntity entityInfo, List<MyJsonFirstLevelFieldData> fields)
         {
            
             ReaderWriterLockSlim.EnterWriteLock();
@@ -139,8 +133,8 @@ namespace MyNoSqlServer.Domains.Db.Tables
                     _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
 
                 var partition = _partitions[entityInfo.PartitionKey];
-                
-                var dbRow = DbRow.CreateNew(entityInfo.PartitionKey, entityInfo.RowKey, data);
+
+                var dbRow = DbRow.CreateNew(entityInfo, fields);
                 partition.InsertOrReplace(dbRow);
                 
                 return (partition, dbRow);
@@ -266,18 +260,6 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 ReaderWriterLockSlim.ExitWriteLock();
             }
         }
-        
-        internal void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
-        {
-            if (!_partitions.ContainsKey(entityInfo.PartitionKey))
-                _partitions.Add(entityInfo.PartitionKey, DbPartition.Create(entityInfo.PartitionKey));
-
-            var partition = _partitions[entityInfo.PartitionKey];
-
-            partition.RestoreRecord(entityInfo, data);
-
-        }
-
 
         public bool HasRecord(IMyNoSqlDbEntity entityInfo)
         {
@@ -298,13 +280,11 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
-        public (IEnumerable<DbPartition> partitions, IReadOnlyList<DbRow> rows) BulkInsertOrReplace(IEnumerable<ArraySpan<byte>> itemsAsArray)
+        public (IEnumerable<DbPartition> partitions, IReadOnlyList<DbRow> rows) BulkInsertOrReplace(IEnumerable<IMyMemory> itemsAsArray)
         {
 
             var dbRows = itemsAsArray
-                .Select(arraySpan => arraySpan
-                    .AsArray()
-                    .ToDbRow())
+                .Select(arraySpan => arraySpan.ToDbRow())
                 .ToList();
             
             
@@ -342,12 +322,11 @@ namespace MyNoSqlServer.Domains.Db.Tables
         }
 
 
-        public void CleanAndBulkInsert(IEnumerable<ArraySpan<byte>> itemsAsArray)
+        public void CleanAndBulkInsert(IEnumerable<IMyMemory> itemsAsArray)
         {
 
             var dbRows = itemsAsArray
                 .Select(arraySpan => arraySpan
-                    .AsArray()
                     .ToDbRow())
                 .ToList();
             
@@ -374,12 +353,11 @@ namespace MyNoSqlServer.Domains.Db.Tables
             }
         }
         
-        public IEnumerable<DbPartition> CleanAndBulkInsert(string partitionKey, IEnumerable<ArraySpan<byte>> itemsAsArray)
+        public IEnumerable<DbPartition> CleanAndBulkInsert(string partitionKey, IEnumerable<IMyMemory> itemsAsArray)
         {
 
             var dbRows = itemsAsArray
                 .Select(arraySpan => arraySpan
-                    .AsArray()
                     .ToDbRow())
                 .ToArray();
             

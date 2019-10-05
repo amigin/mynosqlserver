@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains.DataSynchronization;
 using MyNoSqlServer.Domains.Db;
 
@@ -21,7 +22,7 @@ namespace MyNoSqlServer.Domains.SnapshotSaver
                     try
                     {
                         var table = DbInstance.CreateTableIfNotExists(snapshot.TableName);
-                        var partition = table.InitPartitionFromSnapshot(snapshot.PartitionKey, snapshot.Snapshot);
+                        var partition = table.InitPartitionFromSnapshot(snapshot.Snapshot.AsMyMemory());
 
                         if (partition != null)
                             ServiceLocator.DataSynchronizer.PublishInitPartition(table, partition);

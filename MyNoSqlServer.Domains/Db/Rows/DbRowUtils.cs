@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using MyNoSqlServer.Common;
@@ -20,7 +21,7 @@ namespace MyNoSqlServer.Domains.Db.Rows
                 else
                     result.Write(Comma);
 
-                result.Write(row.Data.ToByteArraySpan());
+                result.Write(row.Data);
             }
 
             result.Write(CloseArray);
@@ -29,86 +30,69 @@ namespace MyNoSqlServer.Domains.Db.Rows
 
         }
 
-        private const string FieldToYield = "\"Timestamp\"";
-        private static bool IsTimeStampField(this ArraySpan<byte> span)
+
+
+        private static readonly byte[] OpenArray = {JsonByteArrayReader.OpenArray};
+        private static readonly byte[] CloseArray = {JsonByteArrayReader.CloseArray};
+        
+        private static readonly byte[] OpenBracket = {JsonByteArrayReader.OpenBracket};
+        private static readonly byte[] CloseBracket = {JsonByteArrayReader.CloseBracket};
+        
+        private static readonly byte[] DoubleColumn = {JsonByteArrayReader.DoubleColumn};
+        private static readonly byte[] Comma = {JsonByteArrayReader.Comma};
+
+        private static readonly byte[] TimestampFieldAndDoubleColumn = Encoding.UTF8.GetBytes(JsonUtils.TimeStampField+":");
+      
+
+        public static List<MyJsonFirstLevelFieldData> InjectTimeStamp(
+            this List<MyJsonFirstLevelFieldData> src, string timeStamp)
         {
 
-            if (span.Length != FieldToYield.Length)
-                return false;
+            var timeStampAsBytes = new byte[timeStamp.Length+2];
+            timeStampAsBytes[0] = JsonByteArrayReader.DoubleQuote;
+            timeStampAsBytes[^1] = JsonByteArrayReader.DoubleQuote;
 
-            var i = 0;
+            var i = 1;
+            foreach (var c in timeStamp)
+                timeStampAsBytes[i++] = (byte) c;
+            
+            var index = src.FindIndex(itm => itm.Field.IsTimeStampField());
 
-            foreach (var b in span)
-            {
-                if (b != FieldToYield[i])
-                    return false;
-                i++;
-            }
+            var timeStampField = new MyJsonFirstLevelFieldData(
+                JsonUtils.TimeSpanKeyAsArray,
+                timeStampAsBytes);
+            
+            if (index < 0)
+                src.Add(timeStampField);
+            else
+                src[index] = timeStampField;
 
-            return true;
-
+            return src;
         }
-        
-        private static readonly ArraySpan<byte> OpenArray = new[] {JsonByteArrayReader.OpenArray}.ToByteArraySpan();
-        private static readonly ArraySpan<byte> CloseArray = new[] {JsonByteArrayReader.CloseArray}.ToByteArraySpan();
-        
-        private static readonly ArraySpan<byte> OpenBracket = new[] {JsonByteArrayReader.OpenBracket}.ToByteArraySpan();
-        private static readonly ArraySpan<byte> CloseBracket = new[] {JsonByteArrayReader.CloseBracket}.ToByteArraySpan();
-        
-        private static readonly ArraySpan<byte> DoubleColumn = new[] {JsonByteArrayReader.DoubleColumn}.ToByteArraySpan();
-        private static readonly ArraySpan<byte> Comma = new[] {JsonByteArrayReader.Comma}.ToByteArraySpan();
 
-        private static readonly ArraySpan<byte> TimestampFieldAndDoubleColumn = Encoding.UTF8.GetBytes(FieldToYield+":").ToByteArraySpan();
-        public static ChunkedStream InjectTimeStamp(this byte[] data, string timeStamp, Dictionary<string, string> keyValue = null)
+        public static IMyNoSqlDbEntity GetEntityInfo(this IEnumerable<MyJsonFirstLevelFieldData> fields)
         {
-            
-            var copy = keyValue != null ? new Dictionary<string,string>(keyValue) : new Dictionary<string, string>();
-            
-            var valueToInject =$"\"{timeStamp}\"" ;
-            
-            var result = new ChunkedStream();
+            var result = new MyNoSqlDbEntity();
 
-            
-            result.Write(OpenBracket);
-
-            
-            foreach (var (keySpan, valueSpan) in data.ParseFirstLevelOfJson())
+            foreach (var itm in fields)
             {
+                if (itm.Field.IsPartitionKey())
+                    result.PartitionKey = itm.Value.AsJsonString();
                 
-                if (keySpan.IsTimeStampField())
-                    continue;
-
-                result.Write(keySpan);
+                if (itm.Field.IsRowKey())
+                    result.RowKey = itm.Value.AsJsonString();
                 
-                result.Write(DoubleColumn);
-                
-                result.Write(valueSpan);
-                
-                result.Write(Comma);
+                if (itm.Field.IsTimeStampField())
+                    result.Timestamp = itm.Value.AsJsonString();
 
 
-                if (keyValue != null && copy.Count > 0)
-                {
-                    var key = keySpan.AsString().RemoveDoubleQuotes();
-
-                    if (keyValue.ContainsKey(key))
-                        keyValue[key] = valueSpan.AsString().RemoveDoubleQuotes();
-
-                    copy.Remove(key);
-                }
-                
+                if (result.PartitionKey != null && result.RowKey != null && result.Timestamp != null)
+                    break;
             }
-            
-            
-            result.Write(TimestampFieldAndDoubleColumn);
-            
-            result.Write(Encoding.UTF8.GetBytes(valueToInject).ToByteArraySpan());
-            
-            result.Write(CloseBracket);
 
             return result;
-
         }
+        
         
     }
     

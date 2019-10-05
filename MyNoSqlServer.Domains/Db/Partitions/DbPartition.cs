@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains.Db.Rows;
+using MyNoSqlServer.Domains.Db.Tables;
 using MyNoSqlServer.Domains.Query;
 
 namespace MyNoSqlServer.Domains.Db.Partitions
@@ -84,10 +85,10 @@ namespace MyNoSqlServer.Domains.Db.Partitions
             return result;
         }
 
-        public void RestoreRecord(IMyNoSqlDbEntity entityInfo, byte[] data)
+        public void RestoreRecord(IMyNoSqlDbEntity entityInfo, IMyMemory data)
         {
             if (!_rows.ContainsKey(entityInfo.RowKey))
-                _rows.Add(entityInfo.RowKey, DbRow.RestoreSnapshot(entityInfo.PartitionKey, entityInfo.RowKey, data));
+                _rows.Add(entityInfo.RowKey, DbRow.RestoreSnapshot(entityInfo, data));
         }
 
 

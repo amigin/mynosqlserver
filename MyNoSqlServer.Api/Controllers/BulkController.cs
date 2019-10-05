@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MyNoSqlServer.Api.Models;
@@ -35,7 +34,10 @@ namespace MyNoSqlServer.Api.Controllers
             
             var table = DbInstance.CreateTableIfNotExists(tableName);
 
-            var entitiesToInsert = (await Request.BodyAsByteArrayAsync()).SplitJsonArrayToObjects().ToList();
+
+            var body = await Request.BodyReader.ReadAsync();
+
+            var entitiesToInsert = body.Buffer.Enumerate().SplitJsonArrayToObjects();
 
             var (dbPartitions, dbRows) = table.BulkInsertOrReplace(entitiesToInsert);
 
@@ -48,7 +50,7 @@ namespace MyNoSqlServer.Api.Controllers
 
         }
 
-        private static void CleanPartitionAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, string partitionKey, 
+        private static void CleanPartitionAndBulkInsert(DbTable table, IEnumerable<IMyMemory> entitiesToInsert, string partitionKey, 
             DataSynchronizationPeriod syncPeriod)
         {
             var partitionsToSynchronize = table.CleanAndBulkInsert(partitionKey, entitiesToInsert);
@@ -61,7 +63,7 @@ namespace MyNoSqlServer.Api.Controllers
         }
         
         
-        private static void CleanTableAndBulkInsert(DbTable table, IEnumerable<ArraySpan<byte>> entitiesToInsert, 
+        private static void CleanTableAndBulkInsert(DbTable table, IEnumerable<IMyMemory> entitiesToInsert, 
             DataSynchronizationPeriod syncPeriod)
         {
             table.CleanAndBulkInsert(entitiesToInsert);
@@ -104,7 +106,10 @@ namespace MyNoSqlServer.Api.Controllers
 
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
-            var entitiesToInsert = (await Request.BodyAsByteArrayAsync()).SplitJsonArrayToObjects().ToList();
+
+            var body = await Request.BodyReader.ReadAsync();
+            
+            var entitiesToInsert = body.Buffer.Enumerate().SplitJsonArrayToObjects();
 
             if (string.IsNullOrEmpty(partitionKey))
                 CleanTableAndBulkInsert(table, entitiesToInsert, theSyncPeriod);

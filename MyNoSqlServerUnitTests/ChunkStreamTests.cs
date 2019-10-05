@@ -96,14 +96,14 @@ namespace MyNoSqlServerUnitTests
             var destArray = new byte[8];
             chunkedStream.Read(destArray, 0, destArray.Length);
             
-            Assert.Equal(destArray[0], array[2]);
-            Assert.Equal(destArray[1], array[3]);
-            Assert.Equal(destArray[2], array[2]);            
-            Assert.Equal(destArray[3], array[3]);
-            Assert.Equal(destArray[4], array[4]);
-            Assert.Equal(destArray[5], array[5]);            
-            Assert.Equal(destArray[6], array[3]);
-            Assert.Equal(destArray[7], array[4]);
+            Assert.Equal(array[2], destArray[0]);
+            Assert.Equal(array[3], destArray[1]);
+            Assert.Equal(array[2], destArray[2]);            
+            Assert.Equal(array[3], destArray[3]);
+            Assert.Equal(array[4], destArray[4]);
+            Assert.Equal(array[5], destArray[5]);            
+            Assert.Equal(array[3], destArray[6]);
+            Assert.Equal(array[4], destArray[7]);
 
         }
     }

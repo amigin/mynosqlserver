@@ -2,8 +2,10 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MyNoSqlServer.Api.Models;
+using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains;
 using MyNoSqlServer.Domains.Db;
+using MyNoSqlServer.Domains.Db.Rows;
 
 namespace MyNoSqlServer.Api.Controllers
 {
@@ -51,7 +53,7 @@ namespace MyNoSqlServer.Api.Controllers
         }
 
         [HttpPost("Row/Insert")]
-        public async ValueTask<IActionResult> InsertEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+        public async ValueTask<IActionResult> InsertEntity([Required][FromQuery] string tableName, 
             [FromQuery]string syncPeriod)
         {
             var shutDown = this.CheckOnShuttingDown();
@@ -62,20 +64,24 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.TableNameIsNull();
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
+            
+            
+            var data = await Request.BodyReader.ReadAsync();
 
+            var fields = data.Buffer.Enumerate().AsMyMemory().ParseFirstLevelOfJson();
 
-            if (string.IsNullOrEmpty(body.PartitionKey))
+            var entityInfo = fields.GetEntityInfo(); 
+
+            if (string.IsNullOrEmpty(entityInfo.PartitionKey))
                 return this.PartitionKeyIsNull();
 
-            if (string.IsNullOrEmpty(body.RowKey))
+            if (string.IsNullOrEmpty(entityInfo.RowKey))
                 return this.RowKeyIsNull();
 
-            if (table.HasRecord(body))
+            if (table.HasRecord(entityInfo))
                 this.ResponseConflict("Record with the same PartitionKey and RowKey is already exists");
-
-            var data = await Request.BodyAsByteArrayAsync();
             
-            var (dbPartition, dbRow) = table.Insert(body, data);
+            var (dbPartition, dbRow) = table.Insert(entityInfo, fields);
 
             if (dbPartition == null) 
                 return this.ResponseConflict("Can not insert entity");
@@ -88,7 +94,7 @@ namespace MyNoSqlServer.Api.Controllers
         }
         
         [HttpPost("Row/InsertOrReplace")]
-        public async ValueTask<IActionResult> InsertOrReplaceEntity([Required][FromQuery] string tableName, [Required][FromBody] MyNoSqlDbEntity body, 
+        public async ValueTask<IActionResult> InsertOrReplaceEntity([Required][FromQuery] string tableName, 
             [FromQuery]string syncPeriod)
         {
             
@@ -100,15 +106,21 @@ namespace MyNoSqlServer.Api.Controllers
                 return this.TableNameIsNull();
 
             var table = DbInstance.CreateTableIfNotExists(tableName);
+            
+            var data = await Request.BodyReader.ReadAsync();
 
-            if (string.IsNullOrEmpty(body.PartitionKey))
+            var fields = data.Buffer.Enumerate().AsMyMemory().ParseFirstLevelOfJson();
+
+            var entityInfo = fields.GetEntityInfo(); 
+
+
+            if (string.IsNullOrEmpty(entityInfo.PartitionKey))
                 return this.PartitionKeyIsNull();
 
-            if (string.IsNullOrEmpty(body.RowKey))
+            if (string.IsNullOrEmpty(entityInfo.RowKey))
                 return this.RowKeyIsNull();
             
-            var data = await Request.BodyAsByteArrayAsync();
-            var (dbPartition, dbRow) = table.InsertOrReplace(body, data);
+            var (dbPartition, dbRow) = table.InsertOrReplace(entityInfo, fields);
             
             ServiceLocator.DataSynchronizer
                 .SynchronizeUpdate(table, new[]{dbRow});

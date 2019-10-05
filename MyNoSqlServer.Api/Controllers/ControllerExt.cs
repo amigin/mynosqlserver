@@ -26,6 +26,7 @@ namespace MyNoSqlServer.Api.Controllers
             return ctx.File(response, AppJsonContentType);
         }
 
+        /*
         public static async ValueTask<byte[]> BodyAsByteArrayAsync(this HttpRequest request)
         {
 
@@ -46,7 +47,8 @@ namespace MyNoSqlServer.Api.Controllers
 
             return listResult.ToArray();
         }
-
+*/
+        
         public static IActionResult CheckOnShuttingDown(this Controller ctx)
         {
             if (ServiceLocator.ShuttingDown)

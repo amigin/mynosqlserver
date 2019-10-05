@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains.Query;
 
 namespace MyNoSqlServer.Domains.Db.Rows
@@ -26,35 +28,16 @@ namespace MyNoSqlServer.Domains.Db.Rows
         public string Timestamp { get; }
         public byte[] Data { get; }
 
-        public static DbRow CreateNew(string partitionKey, string rowKey, byte[] data)
+        public static DbRow CreateNew(IMyNoSqlDbEntity entity, List<MyJsonFirstLevelFieldData> fields)
         {
             var timeStamp = DateTime.UtcNow.ToTimeStampString();
-            data = data.InjectTimeStamp(timeStamp).AsArray();
-            return new DbRow(partitionKey, rowKey, timeStamp, data);
+            fields.InjectTimeStamp(timeStamp);
+            return new DbRow(entity.PartitionKey, entity.RowKey, timeStamp, fields.AsDbRowJson());
         }
 
-        public static DbRow RestoreSnapshot(string partitionKey, string rowKey, byte[] data)
+        public static DbRow RestoreSnapshot(IMyNoSqlDbEntity techData, IMyMemory data)
         {
-            var timeStamp = DateTime.UtcNow.ToTimeStampString();
-            data = data.InjectTimeStamp(timeStamp).AsArray();
-            return new DbRow(partitionKey, rowKey, timeStamp, data);
-        }
-
-        public static DbRow CreateNew(byte[] data)
-        {
-            var keyValue = new Dictionary<string, string>
-            {
-                [DbRowDataUtils.PartitionKeyField] = null,
-                [DbRowDataUtils.RowKeyField] = null,
-            };
-            var timeStamp = DateTime.UtcNow.ToTimeStampString();
-            data = data.InjectTimeStamp(timeStamp, keyValue).AsArray();
-
-
-            return new DbRow(keyValue[DbRowDataUtils.PartitionKeyField],
-                keyValue[DbRowDataUtils.RowKeyField],
-                timeStamp,
-                data);
+            return new DbRow(techData.PartitionKey, techData.RowKey, techData.Timestamp, data.AsArray());
         }
 
         public bool MatchesQuery(IDictionary<string, List<QueryCondition>> conditionsDict)
@@ -67,9 +50,11 @@ namespace MyNoSqlServer.Domains.Db.Rows
 
     public static class DbRowHelpers
     {
-        public static DbRow ToDbRow(this byte[] byteArray)
+        public static DbRow ToDbRow(this IMyMemory myMemory)
         {
-            return DbRow.CreateNew(byteArray);
+            var fields = myMemory.ParseFirstLevelOfJson().ToList();
+            var entityInfo = fields.GetEntityInfo();
+            return DbRow.CreateNew(entityInfo, fields);
         }
     }
     

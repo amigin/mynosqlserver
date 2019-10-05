@@ -3,6 +3,9 @@ using Xunit;
 
 namespace MyNoSqlServerUnitTests
 {
+    
+    
+    /*
     public class SpanTests
     {
 
@@ -41,4 +44,5 @@ namespace MyNoSqlServerUnitTests
         }        
         
     }
+    */
 }

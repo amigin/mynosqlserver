@@ -107,6 +107,15 @@ namespace MyNoSqlServer.Common
 
             return result;
         }
+
+
+        public static string AsString(this in ReadOnlyMemory<byte> src)
+        {
+            return Encoding.UTF8.GetString(src.Span);
+        }
+        
+
+
         
     }
     

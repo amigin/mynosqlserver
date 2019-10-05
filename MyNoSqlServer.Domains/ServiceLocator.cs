@@ -14,7 +14,7 @@ namespace MyNoSqlServer.Domains
         
         public static readonly SnapshotSaverEngine SnapshotSaverEngine = new SnapshotSaverEngine();
         
-        public static ISnapshotSaverScheduler SnapshotSaverScheduler = new SnapshotSaverScheduler();
+        public static readonly ISnapshotSaverScheduler SnapshotSaverScheduler = new SnapshotSaverScheduler();
 
     }
 }

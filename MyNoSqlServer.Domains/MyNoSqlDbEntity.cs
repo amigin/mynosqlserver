@@ -17,7 +17,6 @@ namespace MyNoSqlServer.Domains
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public string Timestamp { get; set; }
-
     }
 
 }

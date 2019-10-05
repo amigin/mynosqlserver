@@ -15,14 +15,11 @@ namespace MyNoSqlServer.Common
             _substringEnd = src.Length;
         }
         
-        
         public int PositionStart { get; private set; }
         
         public int PositionEnd { get; private set; }
 
-
         public bool Eof => PositionStart >= _substringEnd && PositionEnd >= _substringEnd;
-
         
         /// <summary>
         ///  Move start position relative to End Position

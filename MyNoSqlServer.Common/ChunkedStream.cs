@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace MyNoSqlServer.Common
 {
-
     
-    
-    public class ChunkedStream : Stream
+    public class ChunkedStream : Stream, IMyMemory
     {
 
-        private readonly List<ArraySpan<byte>> _streamData = new List<ArraySpan<byte>>();
+        private readonly List<ReadOnlyMemory<byte>> _items = new List<ReadOnlyMemory<byte>>();
         
         public override void Flush()
         {
@@ -21,28 +20,41 @@ namespace MyNoSqlServer.Common
         {
             var (chunkIndex, chunkOffset) = CalcMemoryPosition(position);
 
-            var result = 0;
+            var totalBytesCopied = 0;
+
+
+            var dest = buffer.AsSpan(offset);
             
-            while (offset+result < count)
+            while (chunkIndex<_items.Count)
             {
-                var chunk = _streamData[chunkIndex];
+                var chunk = _items[chunkIndex].Slice(chunkOffset);
 
-                var copySize = count-result;
+                var bytesToCopyCount = count-totalBytesCopied;
 
-                if (copySize > chunk.Length - chunkOffset)
-                    copySize = chunk.Length - chunkOffset;
+                if (bytesToCopyCount > chunk.Length)
+                    bytesToCopyCount = chunk.Length;
                 
-                chunk.CopyToArray(chunkOffset, buffer, result+offset, copySize);
+                
+                if (bytesToCopyCount>=chunk.Length)
+                    chunk.Span.CopyTo(dest);
+                else
+                    chunk.Slice(0, bytesToCopyCount).Span.CopyTo(dest);
 
+                totalBytesCopied += bytesToCopyCount;
+                
+                if (totalBytesCopied>=count)
+                    break;
+                
+                dest = buffer.AsSpan(totalBytesCopied);
+                
                 chunkIndex++;
                 chunkOffset = 0;
-                result += copySize;
 
             }
 
 
-            Position += result;
-            return result;
+            Position += totalBytesCopied;
+            return totalBytesCopied;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -58,12 +70,60 @@ namespace MyNoSqlServer.Common
             return CopyToBuffer((int) Position, buffer, offset, count);
         }
 
+        
+        private byte[] _cachedData;
+        
         public byte[] AsArray()
         {
-            var result = new byte[Length];
-            CopyToBuffer(0, result, 0, result.Length);
-            return result;
+            if (_cachedData != null)
+                return _cachedData;
+
+            var len = _items.Sum(itm => itm.Length);
+
+            var result = new byte[len];
+            var i = 0;
+
+            foreach (var item in _items)
+                for (var j = 0; j < item.Length; j++)
+                {
+                    result[i] = item.Span[j];
+                    i++;
+                }
+
+            _cachedData = result;
+
+            return _cachedData;
         }
+
+        public IEnumerable<(byte item, int index)> Enumerate()
+        {
+            var i = 0;
+            foreach (var item in _items)
+                for (var j = 0; j < item.Length; j++)
+                {
+                    yield return (item.Span[j], i);
+                    i++;
+                }
+        }
+
+        public ReadOnlyMemory<byte> Slice(int startPosition, int len)
+        {
+            // If we have already cached array - we use it;
+            if (_cachedData != null)
+                return new ReadOnlyMemory<byte>(AsArray(), startPosition, len);
+
+
+            // Checking if we Have Full Sequence already;
+            var (chunkIndex, chunkOffset) = CalcMemoryPosition(startPosition);
+            if (_items[chunkIndex].Length - chunkOffset >= len)
+                return _items[chunkIndex].Slice(chunkOffset, len);
+
+
+            // Create a new cache and return it slice
+            return new ReadOnlyMemory<byte>(AsArray(), startPosition, len);
+        }
+
+        public ReadOnlySpan<byte> Span => AsArray();
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -79,14 +139,21 @@ namespace MyNoSqlServer.Common
         {
             if (count == 0)
                 return;
+
+            _cachedData = null;
             
-            _streamData.Add(buffer.ToByteArraySpan(offset, count));
+            _items.Add( new ReadOnlyMemory<byte>( buffer, offset, count));
             _length += count;
         }
         
-        public void Write(ArraySpan<byte> arraySpan)
+        public void Write(ReadOnlyMemory<byte> arraySpan)
         {
-            _streamData.Add(arraySpan);
+            if (arraySpan.Length == 0)
+                return;
+
+            _cachedData = null;
+            
+            _items.Add(arraySpan);
             _length += arraySpan.Length;
         }
 
@@ -101,17 +168,33 @@ namespace MyNoSqlServer.Common
         {
 
             
-            for (var chunkIndex = 0; chunkIndex < _streamData.Count; chunkIndex++)
+            for (var chunkIndex = 0; chunkIndex < _items.Count; chunkIndex++)
             {
-                if (position < _streamData[chunkIndex].Length)
+                if (position < _items[chunkIndex].Length)
                     return (chunkIndex, position);
 
-                position -= _streamData[chunkIndex].Length;
+                position -= _items[chunkIndex].Length;
             }
             
             throw new IndexOutOfRangeException($"Index {position} is out of range of range of the stream");
         }
 
         public override long Position { get; set; }
+        
+        public static ChunkedStream Create(ReadOnlyMemory<byte> bytes)
+        {
+            var result= new ChunkedStream();
+            result.Write(bytes);
+            return result;
+        }
+        
+        public static ChunkedStream Create(IEnumerable<ReadOnlyMemory<byte>> items)
+        {
+            var result= new ChunkedStream();
+            foreach (var item in items)
+                result.Write(item);
+            return result;
+        }
     }
+    
 }

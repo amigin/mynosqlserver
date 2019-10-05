@@ -1,5 +1,7 @@
 using System.Linq;
+using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains;
+using MyNoSqlServer.Domains.Db.Rows;
 using MyNoSqlServer.Domains.Db.Tables;
 using MyNoSqlServer.Domains.Query;
 using Xunit;
@@ -27,17 +29,21 @@ namespace MyNoSqlServerUnitTests
                 TestField = "Test"
             };
 
-            var recordIsByteArray = recordToInsert.AsByteArray();
+            var recordIsByteArray = recordToInsert.AsJsonByteArray();
+
+            var fields = recordIsByteArray.AsMyMemory().ParseFirstLevelOfJson();
+
+            var entityInfo = fields.GetEntityInfo();
             
-            dbTable.Insert(recordToInsert, recordIsByteArray);
+            dbTable.Insert(entityInfo, fields);
 
             var query = "PartitionKey eq 'MyPartition' and RowKey eq 'MyRow'";
 
             var queryCondition = query.ParseQueryConditions();
             
-            var result = dbTable.ApplyQuery(queryCondition).Select(itm => itm.Data.DeserializeDbEntity<TestRecord>()).First();
+            var foundItems = dbTable.ApplyQuery(queryCondition).ToArray();
 
-            Assert.Equal(recordToInsert.TestField, result.TestField);
+            Assert.Equal(recordToInsert.TestField, foundItems.First().GetValue("TestField"));
 
         }
         
@@ -56,20 +62,22 @@ namespace MyNoSqlServerUnitTests
                     TestField = key
                 };
                 
-                var recordIsByteArray = recordToInsert.AsByteArray();
+                var recordIsByteArray = recordToInsert.AsJsonByteArray().AsMyMemory();
+
+                var fields = recordIsByteArray.ParseFirstLevelOfJson();
             
-                dbTable.Insert(recordToInsert, recordIsByteArray);
+                dbTable.Insert(fields.GetEntityInfo(), fields);
             }
 
             var query = "PartitionKey eq 'MyPartition' and RowKey ge '001' and RowKey le '003'";
 
             var queryCondition = query.ParseQueryConditions();
             
-            var result = dbTable.ApplyQuery(queryCondition).Select(itm => itm.Data.DeserializeDbEntity<TestRecord>()).ToArray();
+            var foundRecords = dbTable.ApplyQuery(queryCondition).ToArray();
 
-            Assert.Single(result);
+            Assert.Single(foundRecords);
 
-            Assert.Equal("002", result[0].TestField);
+            Assert.Equal("002", foundRecords[0].GetValue("TestField"));
 
         }
         
@@ -88,26 +96,24 @@ namespace MyNoSqlServerUnitTests
                     TestField = key
                 };
                 
-                var recordIsByteArray = recordToInsert.AsByteArray();
+                var recordIsByteArray = recordToInsert.AsJsonByteArray().AsMyMemory();
+
+                var fields = recordIsByteArray.ParseFirstLevelOfJson();
             
-                dbTable.Insert(recordToInsert, recordIsByteArray);
+                dbTable.Insert(fields.GetEntityInfo(), fields);
             }
 
             var query = "PartitionKey eq 'MyPartition' and RowKey ge '199'";
 
             var queryCondition = query.ParseQueryConditions();
             
-            var result = dbTable.ApplyQuery(queryCondition).Select(itm => itm.Data.DeserializeDbEntity<TestRecord>()).ToArray();
+            var foundRecords = dbTable.ApplyQuery(queryCondition).ToArray();
 
-            Assert.Single(result);
+            Assert.Single(foundRecords);
 
-            Assert.Equal("200", result[0].TestField);
-
+            Assert.Equal("200", foundRecords[0].GetValue("TestField"));
         } 
         
-        
     }
-    
-    
     
 }
