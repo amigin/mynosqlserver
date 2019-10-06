@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using MyNoSqlServer.Common;
 using MyNoSqlServer.Domains.Db.Rows;
-using MyNoSqlServer.Domains.Db.Tables;
 using MyNoSqlServer.Domains.Query;
 
 namespace MyNoSqlServer.Domains.Db.Partitions
