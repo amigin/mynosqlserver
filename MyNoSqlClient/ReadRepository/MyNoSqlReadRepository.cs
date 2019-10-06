@@ -2,9 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using MyNoSqlClient.ReadRepository;
 
-namespace MyNoSqlClient
+namespace MyNoSqlClient.ReadRepository
 {
 
     public class MyNoSqlReadRepository<T> : IMyNoSqlReadRepository<T> where T:IMyNoSqlTableEntity

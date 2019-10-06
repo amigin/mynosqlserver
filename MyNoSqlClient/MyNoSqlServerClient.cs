@@ -10,7 +10,7 @@ namespace MyNoSqlClient
 {
     public class MyNoSqlServerClient<T> : IMyNoSqlServerClient<T> where T: IMyNoSqlTableEntity, new()
     {
-        private readonly string _url;
+        private readonly IMyNoSqlConnection _myNoSqlConnection;
         private readonly DataSynchronizationPeriod _dataSynchronizationPeriod;
         private readonly string _tableName;
 
@@ -18,10 +18,11 @@ namespace MyNoSqlClient
         private const string RowKey = "rowKey";
         private const string TableName = "tableName";
                 
-        public MyNoSqlServerClient(string url, string tableName, 
+        public MyNoSqlServerClient(IMyNoSqlConnection myNoSqlConnection, string tableName, 
             DataSynchronizationPeriod dataSynchronizationPeriod = DataSynchronizationPeriod.Sec5)
         {
-            _url = url;
+            
+            _myNoSqlConnection = myNoSqlConnection;
             _dataSynchronizationPeriod = dataSynchronizationPeriod;
             _tableName = tableName.ToLower();
             Task.Run(CreateTableIfNotExistsAsync);
@@ -29,7 +30,7 @@ namespace MyNoSqlClient
 
         private async Task CreateTableIfNotExistsAsync()
         {
-            await _url
+            await _myNoSqlConnection.Url
                 .AppendPathSegments("Tables", "CreateIfNotExists")
                 .SetQueryParam(TableName, _tableName)
                 .PostStringAsync(string.Empty);
@@ -37,7 +38,7 @@ namespace MyNoSqlClient
 
         public async Task InsertAsync(T entity)
         {
-            await _url
+            await _myNoSqlConnection.Url
                 .AppendPathSegments("Row", "Insert")
                 .AppendDataSyncPeriod(_dataSynchronizationPeriod)
                 .SetQueryParam(TableName, _tableName)
@@ -46,7 +47,7 @@ namespace MyNoSqlClient
 
         public async Task InsertOrReplaceAsync(T entity)
         {
-                await _url
+                await _myNoSqlConnection.Url
                     .AppendPathSegments("Row", "InsertOrReplace")
                     .AppendDataSyncPeriod(_dataSynchronizationPeriod)
                     .SetQueryParam(TableName, _tableName)
@@ -55,7 +56,7 @@ namespace MyNoSqlClient
 
         public async Task CleanAndKeepLastRecordsAsync(string partitionKey, int amount)
         {
-            await _url
+            await _myNoSqlConnection.Url
                 .AppendPathSegments("CleanAndKeepLastRecords")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)
@@ -70,7 +71,7 @@ namespace MyNoSqlClient
         {
             try
             {
-                await _url
+                await _myNoSqlConnection.Url
                     .AppendPathSegments("Bulk", "InsertOrReplace")
                     .SetQueryParam(TableName, _tableName)
                     .AppendDataSyncPeriod(dataSynchronizationPeriod)
@@ -89,7 +90,7 @@ namespace MyNoSqlClient
         {
             try
             {
-                await _url
+                await _myNoSqlConnection.Url
                     .AppendPathSegments("Bulk", "CleanAndBulkInsert")
                     .AppendDataSyncPeriod(dataSynchronizationPeriod)
                     .SetQueryParam(TableName, _tableName)
@@ -108,7 +109,7 @@ namespace MyNoSqlClient
         {
             try
             {
-                await _url
+                await _myNoSqlConnection.Url
                     .AppendPathSegments("Bulk", "CleanAndBulkInsert")
                     .SetQueryParam(TableName, _tableName)
                     .SetQueryParam(PartitionKey, partitionKey)
@@ -125,48 +126,24 @@ namespace MyNoSqlClient
 
         public async Task<IEnumerable<T>> GetAsync()
         {
-            return await _url
-                .AppendPathSegments("Row")
-                .SetQueryParam(TableName, _tableName)
-                .GetAsync()
-                .ReadAsJsonAsync<T[]>();
+            return await _myNoSqlConnection.RequestAsync<List<T>>("GetRowsBy", _tableName);
         }
-
 
         public async Task<IEnumerable<T>> GetAsync(string partitionKey)
         {
-            return await _url
-                .AppendPathSegments("Row")
-                .SetQueryParam(TableName, _tableName)
-                .SetQueryParam(PartitionKey, partitionKey)                
-                .GetAsync()
-                .ReadAsJsonAsync<T[]>();
+            return await _myNoSqlConnection.RequestAsync<List<T>>("GetRowsByPartition", _tableName, partitionKey);
         }
 
         public async Task<T> GetAsync(string partitionKey, string rowKey)
         {
-
-            var response = await _url
-                .AppendPathSegments("Row")
-                .SetQueryParam(TableName, _tableName)
-                .SetQueryParam(PartitionKey, partitionKey)
-                .SetQueryParam(RowKey, rowKey)
-                .AllowHttpStatus(HttpStatusCode.NotFound)
-                .GetAsync();
-
-
-            if (response.IsRecordNotFound())
-                return default(T);
-
-            return await response.ReadAsJsonAsync<T>();
-
+            return await _myNoSqlConnection.RequestAsync<T>("GetRow", _tableName, partitionKey, rowKey);
         }
 
         private static readonly T[] EmptyResponse = new T[0];
         
         public async Task<IReadOnlyList<T>> GetMultipleRowKeysAsync(string partitionKey, IEnumerable<string> rowKeys)
         {
-            var response = await _url
+            var response = await _myNoSqlConnection.Url
                 .AppendPathSegments("Rows","SinglePartitionMultipleRows")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)
@@ -186,7 +163,7 @@ namespace MyNoSqlClient
             if (result == null)
                 return default;
             
-            await _url
+            await _myNoSqlConnection.Url
                 .AppendPathSegments("Row")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)
@@ -201,7 +178,7 @@ namespace MyNoSqlClient
 
         public async Task<IEnumerable<T>> QueryAsync(string query)
         {
-            var response = await _url
+            var response = await _myNoSqlConnection.Url
                 .AppendPathSegments("Query")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam("query", query)
@@ -213,7 +190,7 @@ namespace MyNoSqlClient
 
         public async Task<IEnumerable<T>> GetHighestRowAndBelow(string partitionKey, string rowKeyFrom, int amount)
         {
-            var response = await _url
+            var response = await _myNoSqlConnection.Url
                 .AppendPathSegments("Rows", "HighestRowAndBelow")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)
@@ -226,7 +203,7 @@ namespace MyNoSqlClient
 
         public async Task<int> GetCountAsync(string partitionKey)
         {
-            var response = await _url
+            var response = await _myNoSqlConnection.Url
                 .AppendPathSegments("/Count")
                 .SetQueryParam(TableName, _tableName)
                 .SetQueryParam(PartitionKey, partitionKey)

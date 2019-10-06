@@ -6,30 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace MyNoSqlClient
+namespace MyNoSqlClient.SignalR
 {
-
-    public class HubConnectionSynchronizer
-    {
-        private HubConnection _connection;
-        
-        public void Set(HubConnection connection)
-        {
-            _connection = connection;
-        }
-
-        public HubConnection Get()
-        {
-
-            var result = _connection;
-            if (result == null)
-                throw new Exception("No active connections");
-
-            return result;
-        }
-    }
-    
-    public class MyNoSqlSignalR : IMyNoSqlConnection
+    public class MyNoSqlSignalRConnection : IMyNoSqlConnection
     {
 
         private const string SystemAction = "system";
@@ -53,18 +32,19 @@ namespace MyNoSqlClient
         private const string PathForSubscribes = "changes";
 
 
-        private readonly string _url;
+        private readonly string _signalRurl;
         private readonly TimeSpan _pingTimeOut;
 
         private readonly HubConnectionSynchronizer _currentConnection = new HubConnectionSynchronizer();
 
-        public MyNoSqlSignalR(string url, TimeSpan pingTimeOut)
+        public MyNoSqlSignalRConnection(string url, TimeSpan pingTimeOut)
         {
-            _url = url.Last() == '/' ? url + PathForSubscribes : url + "/" + PathForSubscribes;
+            Url = url;
+            _signalRurl = url.Last() == '/' ? url + PathForSubscribes : url + "/" + PathForSubscribes;
             _pingTimeOut = pingTimeOut;
         }
 
-        public MyNoSqlSignalR(string url) :
+        public MyNoSqlSignalRConnection(string url) :
             this(url, TimeSpan.FromSeconds(30))
         {
         }
@@ -95,6 +75,8 @@ namespace MyNoSqlClient
             var items = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
             _deleteCallbacks[tableName](items);
         }
+
+        public string Url { get; }
 
         public void Subscribe<T>(string tableName,
             Action<IReadOnlyList<T>> initAction,
@@ -128,7 +110,62 @@ namespace MyNoSqlClient
             = new ConcurrentDictionary<string, TaskCompletionSource<string>>();
 
 
+        public async Task<T> RequestAsync<T>(string methodName, params object[] @params)
+        {
+            var connection = _currentConnection.Get();
+            var corrId = Guid.NewGuid().ToString("N");
 
+            var taskCompletion = new TaskCompletionSource<string>();
+            _requests.TryAdd(corrId, taskCompletion);
+
+            try
+            {
+
+                switch (@params.Length)
+                {
+                    case 1:
+                        await connection.SendAsync(methodName, corrId, @params[0]);
+                        break;
+
+                    case 2:
+                        await connection.SendAsync(methodName, corrId, @params[0], @params[1]);
+                        break;
+
+                    case 3:
+                        await connection.SendAsync(methodName, corrId, @params[0], @params[1], @params[2]);
+                        break;
+
+                    case 4:
+                        await connection.SendAsync(methodName, corrId, @params[0], @params[1], @params[2]);
+                        break;
+
+                    case 5:
+                        await connection.SendAsync(methodName, corrId, @params[0], @params[1], @params[2], @params[3]);
+                        break;
+
+                    case 6:
+                        await connection.SendAsync(methodName, corrId, @params[0], @params[1], @params[2], @params[3],
+                            @params[4]);
+                        break;
+
+
+                    default:
+                        throw new Exception($"Unsupported parameters amount {@params.Length} list to do request");
+
+                }
+
+                var responseText = await taskCompletion.Task;
+                
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(responseText);
+            }
+            finally
+            {
+                _requests.TryRemove(corrId, out _);
+            }
+        }
+        
+
+        /*
         public async Task<IReadOnlyList<T>> RequestRowsAsync<T>(string tableName, string partitionKey)
         {
 
@@ -170,6 +207,7 @@ namespace MyNoSqlClient
             }
         }
 
+*/
         private async Task SubscribeAsync(HubConnection hubConnection)
         {
 
@@ -255,7 +293,7 @@ namespace MyNoSqlClient
                 try
                 {
 
-                    Console.WriteLine("Connecting to MyNoSql Server using SignalR: " + _url);
+                    Console.WriteLine("Connecting to MyNoSql Server using SignalR: " + _signalRurl);
                     await hubConnection.StartAsync();
                     Console.WriteLine("Connected to MyNoSql Server using SignalR");
                     _lastIncomingDateTime = DateTime.UtcNow;
@@ -264,7 +302,7 @@ namespace MyNoSqlClient
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"MyNoSql SignalR connection error to {_url}. Error: " + e.Message);
+                    Console.WriteLine($"MyNoSql SignalR connection error to {_signalRurl}. Error: " + e.Message);
                     await Task.Delay(1000);
                 }
             }
@@ -292,7 +330,7 @@ namespace MyNoSqlClient
                 try
                 {
                     var hubConnection = new HubConnectionBuilder()
-                        .WithUrl(_url)
+                        .WithUrl(_signalRurl)
                         .Build();
 
                     await StartAsync(hubConnection);
@@ -321,7 +359,7 @@ namespace MyNoSqlClient
             foreach (var key in keys)
             {
                 if (_requests.TryRemove(key, out var taskCompletion))
-                    taskCompletion.SetException(new Exception("Socket disconnected"));
+                    taskCompletion.SetException(new Exception("Socket is disconnected"));
                 
             }
         }

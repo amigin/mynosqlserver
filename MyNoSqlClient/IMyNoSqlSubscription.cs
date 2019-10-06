@@ -7,15 +7,17 @@ namespace MyNoSqlClient
 
     public interface IMyNoSqlConnection
     {
+        
+        string Url { get; }
+        
         void Subscribe<T>(string tableName, 
             Action<IReadOnlyList<T>> initAction, 
             Action<string, IReadOnlyList<T>> initPartitionAction, 
             Action<IReadOnlyList<T>> updateAction, 
             Action<IDictionary<string, string>> deleteActions);
 
-        Task<IReadOnlyList<T>> RequestRowsAsync<T>(string tableName, string partitionKey);
-        Task<T> RequestRowAsync<T>(string tableName, string partitionKey, string rowKey);
-        
+
+        Task<T> RequestAsync<T>(string methodName, params object[] @params);
     }
 
 }

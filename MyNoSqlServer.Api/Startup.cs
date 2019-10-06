@@ -104,8 +104,11 @@ namespace MyNoSqlServer.Api
 
             app.UseMvc();
 
-
-            app.UseSignalR(routes => { routes.MapHub<ChangesHub>("/changes"); });
+            app.UseRouting();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapHub<ChangesHub>("/changes");
+            });
 
 
         }

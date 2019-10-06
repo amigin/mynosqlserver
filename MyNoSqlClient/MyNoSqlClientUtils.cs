@@ -6,7 +6,6 @@ namespace MyNoSqlClient
     public static class MyNoSqlClientUtils
     {
 
-
         public static string ToHttpContract(this DataSynchronizationPeriod dataSynchronizationPeriod)
         {
             switch (dataSynchronizationPeriod)

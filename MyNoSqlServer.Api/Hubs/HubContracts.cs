@@ -25,6 +25,14 @@ namespace MyNoSqlServer.Api.Hubs
             return Encoding.UTF8.GetBytes(json);
         }
 
-        
+
+        public static int? ContractToLimit(this int limit)
+        {
+            return limit <= 0 ? (int?) null : limit;
+        }
+        public static int? ContractToSkip(this int take)
+        {
+            return take <= 0 ? (int?) null : take;
+        }   
     }
 }

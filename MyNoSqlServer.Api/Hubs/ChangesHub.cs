@@ -89,7 +89,6 @@ namespace MyNoSqlServer.Api.Hubs
 
         }
 
-
         public static void BroadCastInit(DbTable dbTable)
         {
             var clientsToSend = Connections.Get(itm => itm.SubscribedToTable(dbTable.Name)).Select(itm => itm.Client);
@@ -151,7 +150,7 @@ namespace MyNoSqlServer.Api.Hubs
             if (partition == null)
                 return Clients.Caller.SendRowNotFoundAsync(corrId);
 
-            var row = partition.GetRow(corrId);
+            var row = partition.GetRow(rowKey);
             
             if (row == null)
                 return Clients.Caller.SendRowNotFoundAsync(corrId);
@@ -161,7 +160,7 @@ namespace MyNoSqlServer.Api.Hubs
 
         }
         
-        public Task GetRowsByPartition(string tableName, string corrId, string partitionKey)
+        public Task GetRowsByPartition(string tableName, string corrId, string partitionKey, int limit, int skip)
         {
             var dbTable = DbInstance.GetTable(tableName);
             if (dbTable == null)
@@ -172,7 +171,19 @@ namespace MyNoSqlServer.Api.Hubs
             if (partition == null)
                 return Clients.Caller.SendEmptyRowsAsync(corrId);
 
-            var rows = partition.GetAllRows();
+            var rows = partition.GetRowsWithLimit(limit.ContractToLimit(), skip.ContractToSkip());
+
+            return Clients.Caller.SendRowsAsync(corrId, rows.ToJsonArray().AsArray());
+        }
+        
+        public Task GetRows(string tableName, string corrId, int limit, int skip)
+        {
+            var dbTable = DbInstance.GetTable(tableName);
+            if (dbTable == null)
+                return Clients.Caller.SendTableNotFoundAsync(corrId);
+
+
+            var rows = dbTable.GetAllRecords(limit.ContractToLimit());
 
             return Clients.Caller.SendRowsAsync(corrId, rows.ToJsonArray().AsArray());
         }

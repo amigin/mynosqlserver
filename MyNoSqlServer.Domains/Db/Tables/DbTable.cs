@@ -164,7 +164,7 @@ namespace MyNoSqlServer.Domains.Db.Tables
                 ReaderWriterLockSlim.ExitReadLock();
             }
         }
-        
+
 
         public IReadOnlyList<DbRow> GetAllRecords(int? limit)
         {
