@@ -14,21 +14,31 @@ namespace MyNoSqlServer.Api
         public static SettingsModel LoadSettings()
         {
 
-            var homeFolder = Environment.GetEnvironmentVariable("HOME");
-
-            var fileName = homeFolder.AddLastSymbolIfOneNotExists('/') + ".mynosqlserver";
-
-            var json = File.ReadAllText(fileName);
-
-            var result = Newtonsoft.Json.JsonConvert.DeserializeObject<SettingsModel>(json);
-
-            if (string.IsNullOrEmpty(result.BackupAzureConnectString))
+            try
             {
-                Console.WriteLine("No connection string found. Backups are not going to be done");
-            }
-            //    throw new Exception("{ \"BackupAzureConnectString\":null } but it should not be null ");
+                var homeFolder = Environment.GetEnvironmentVariable("HOME");
 
-            return result;
+                var fileName = homeFolder.AddLastSymbolIfOneNotExists('/') + ".mynosqlserver";
+
+                var json = File.ReadAllText(fileName);
+
+                var result = Newtonsoft.Json.JsonConvert.DeserializeObject<SettingsModel>(json);
+
+                if (string.IsNullOrEmpty(result.BackupAzureConnectString))
+                {
+                    Console.WriteLine("No connection string found. Backups are disabled");
+                }
+                //    throw new Exception("{ \"BackupAzureConnectString\":null } but it should not be null ");
+
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error reading Settings File: "+e.Message);
+                Console.WriteLine("Backups are disabled");
+                return new SettingsModel();
+            }
         }
     }
     

@@ -8,7 +8,7 @@ namespace MyNoSqlServer.Domains
         
         public static bool ShuttingDown { get; set; }
 
-        public static ISnapshotStorage SnapshotStorage;
+        public static ISnapshotStorage SnapshotStorage { get; set; }
         
         public static IReplicaSynchronizationService DataSynchronizer;
         

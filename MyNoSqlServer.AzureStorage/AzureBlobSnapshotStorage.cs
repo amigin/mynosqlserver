@@ -12,11 +12,11 @@ using MyNoSqlServer.Domains.Db.Tables;
 namespace MyNoSqlServer.AzureStorage
 {
     
-    public class AzureStorageBlob : ISnapshotStorage
+    public class AzureBlobSnapshotStorage : ISnapshotStorage
     {
         private readonly CloudStorageAccount _storageAccount;
 
-        public AzureStorageBlob(string connectionString)
+        public AzureBlobSnapshotStorage(string connectionString)
         {
             _storageAccount = CloudStorageAccount.Parse(connectionString);
         }
@@ -74,7 +74,7 @@ namespace MyNoSqlServer.AzureStorage
             
         }
 
-        public async Task LoadSnapshotsAsync(Action<IEnumerable<string>> tablesCallback, Action<PartitionSnapshot> callback)
+        public async Task LoadSnapshotsAsync(Action<IEnumerable<string>> tablesCallback, Action<PartitionSnapshot> callbackPartitionSnapshot)
         {
         
             const string ignoreContainerName = "nosqlsnapshots";
@@ -86,7 +86,7 @@ namespace MyNoSqlServer.AzureStorage
             foreach (var container in containers.Where(c => c.Name != ignoreContainerName))
             {
 
-                foreach (var blockBlob in await container.GetListOfBlobs())
+                await foreach (var blockBlob in container.GetListOfBlobsAsync())
                 {
                     var memoryStream = new MemoryStream();
 
@@ -99,8 +99,7 @@ namespace MyNoSqlServer.AzureStorage
                         Snapshot =  memoryStream.ToArray()
                     };
 
-                    callback(snapshot);
-                    
+                    callbackPartitionSnapshot(snapshot);
                     
                     Console.WriteLine("Loaded snapshot: "+snapshot);
                 }

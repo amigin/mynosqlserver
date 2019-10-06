@@ -8,11 +8,29 @@ using MyNoSqlServer.Domains.SnapshotSaver;
 
 namespace MyNoSqlServer.Api.Controllers
 {
-    public static class SyncronizationDecorator
+    public static class PermanentSynchronizationDecorators
     {
+        
+        public static ValueTask<IActionResult> SynchronizeTableAsync(this IActionResult result, DbTable dbTable, DataSynchronizationPeriod period)
+        {
+            if (ServiceLocator.SnapshotStorage == null)
+                return new ValueTask<IActionResult>(result);
+            
+            if (period == DataSynchronizationPeriod.Immediately)
+                return result.ResponseWithActionAsync(() => ServiceLocator
+                    .SnapshotStorage
+                    .SaveTableSnapshotAsync(dbTable));
+            
+            ServiceLocator.SnapshotSaverScheduler.SynchronizeTable(dbTable, period);
+            return new ValueTask<IActionResult>(result);
+        }
+        
         public static ValueTask<IActionResult> SynchronizePartitionAsync(this IActionResult result, DbTable dbTable, DbPartition partitionToSave,
             DataSynchronizationPeriod period)
         {
+            
+            if (ServiceLocator.SnapshotStorage == null)
+                return new ValueTask<IActionResult>(result);            
 
             if (period == DataSynchronizationPeriod.Immediately)
             {
@@ -27,22 +45,13 @@ namespace MyNoSqlServer.Api.Controllers
             return new ValueTask<IActionResult>(result);
         }
 
-        public static ValueTask<IActionResult> SynchronizeTableAsync(this IActionResult result, DbTable dbTable, DataSynchronizationPeriod period)
-        {
-            if (period == DataSynchronizationPeriod.Immediately)
-                return result.ResponseWithActionAsync(() => ServiceLocator
-                    .SnapshotStorage
-                    .SaveTableSnapshotAsync(dbTable));
-            
-            
-            ServiceLocator.SnapshotSaverScheduler.SynchronizeTable(dbTable, period);
-            return new ValueTask<IActionResult>(result);
-        }
-
         public static ValueTask<IActionResult> SynchronizeDeletePartitionAsync(this IActionResult result, DbTable dbTable,
             DbPartition dbPartition,
             DataSynchronizationPeriod period)
         {
+            
+            if (ServiceLocator.SnapshotStorage == null)
+                return new ValueTask<IActionResult>(result);
 
             if (period == DataSynchronizationPeriod.Immediately)
                 return result.ResponseWithActionAsync(() => ServiceLocator

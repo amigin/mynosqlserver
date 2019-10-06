@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -19,8 +18,7 @@ namespace MyNoSqlServer.AzureStorage
             };
 
 
-        
-        internal static CloudBlobContainer GetContainerReference(this CloudStorageAccount storageAccount, string container)
+        private static CloudBlobContainer GetContainerReference(this CloudStorageAccount storageAccount, string container)
         {
             NameValidator.ValidateContainerName(container);
 
@@ -33,13 +31,12 @@ namespace MyNoSqlServer.AzureStorage
         {
             var cloudBlobClient = storageAccount.CreateCloudBlobClient();
             
-            
             BlobContinuationToken continuationToken = null;
             var containers = new List<CloudBlobContainer>();
 
             do
             {
-                ContainerResultSegment response = await cloudBlobClient.ListContainersSegmentedAsync(continuationToken);
+                var response = await cloudBlobClient.ListContainersSegmentedAsync(continuationToken);
                 continuationToken = response.ContinuationToken;
                 containers.AddRange(response.Results);
 
@@ -60,27 +57,29 @@ namespace MyNoSqlServer.AzureStorage
             await containerRef.SetPermissionsAsync(permissions, null, RequestOptions, null);
             
             return containerRef;
-        } 
-        
-   
+        }
 
 
-        internal static async Task<IReadOnlyList<CloudBlob>> GetListOfBlobs(this CloudBlobContainer cloudBlobContainer)
+
+
+        internal static async IAsyncEnumerable<CloudBlob> GetListOfBlobsAsync(
+            this CloudBlobContainer cloudBlobContainer)
         {
 
             var dir = cloudBlobContainer.GetDirectoryReference("");
 
             BlobContinuationToken continuationToken = null;
-            var results = new List<CloudBlockBlob>();
-            
+
             do
             {
                 var response = await dir.ListBlobsSegmentedAsync(continuationToken);
                 continuationToken = response.ContinuationToken;
-                results.AddRange(response.Results.Cast<CloudBlockBlob>());
+
+                foreach (var blob in response.Results.Cast<CloudBlockBlob>())
+                    yield return blob;
+
             } while (continuationToken != null);
 
-            return results;
         }
 
         internal static string PartitionKeyToBlobName(this string partitionKey)
@@ -120,10 +119,10 @@ namespace MyNoSqlServer.AzureStorage
         {
             try
             {
-                var blobs  = await container.GetListOfBlobs();
 
-                foreach (var cloudBlob in blobs)
-                   await cloudBlob.DeleteBlobAsync();
+                await foreach (var cloudBlob in container.GetListOfBlobsAsync())
+                    await cloudBlob.DeleteBlobAsync(); 
+                   
             }
             catch (Exception e)
             {

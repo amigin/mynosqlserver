@@ -10,7 +10,7 @@ namespace MyNoSqlServer.AzureStorage
             if (string.IsNullOrEmpty(connectionString))
                 return;
 
-            ServiceLocator.SnapshotStorage = new AzureStorageBlob(connectionString);
+            ServiceLocator.SnapshotStorage = new AzureBlobSnapshotStorage(connectionString);
         }
     }
     

@@ -10,8 +10,7 @@ using MyNoSqlServer.Domains.Db.Rows;
 namespace MyNoSqlServer.Api.Controllers
 {
     
-    [ApiController]    
-    
+    [ApiController]
     public class RowController : Controller
     {
         [HttpGet("Row")]
